@@ -14,7 +14,7 @@ namespace BookingSystem.Domain.Entities
 		public bool HasBalcony { get; set; }
 		public bool HasSeaView { get; set; }
 		public string? MainImage { get; set; }
-		public Guid HotelId { get; set; }
+		public Guid AccommodationId { get; set; }
 
 		// Navigation Properties
 		public virtual Accommodation Accommodation { get; set; } = null!;

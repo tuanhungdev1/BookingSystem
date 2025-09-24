@@ -8,7 +8,7 @@ namespace BookingSystem.Domain.Entities
 		public string? Caption { get; set; }
 		public int Order { get; set; }
 		public bool IsMain { get; set; }
-		public Guid HotelId { get; set; }
+		public Guid AccommodationId { get; set; }
 
 		// Navigation Properties
 		public virtual Accommodation Accommodation { get; set; } = null!;

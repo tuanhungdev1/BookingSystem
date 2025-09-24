@@ -109,10 +109,10 @@ namespace BookingSystem.Controllers
 			});
 		}
 
-		[HttpGet("by-type")]
-		public async Task<ActionResult<ApiResponse<IEnumerable<AccommodationDto>>>> GetByType([FromQuery] AccommodationType type)
+		[HttpGet("by-type/{id}")]
+		public async Task<ActionResult<ApiResponse<IEnumerable<AccommodationDto>>>> GetByType([FromQuery] Guid id)
 		{
-			var accommodations = await _accommodationService.GetByTypeAsync(type);
+			var accommodations = await _accommodationService.GetByTypeAsync(id);
 			return Ok(new ApiResponse<IEnumerable<AccommodationDto>>
 			{
 				Success = true,

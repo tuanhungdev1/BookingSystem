@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore;
 using BookingSystem.Domain.Entities;
-using BookingSystem.Domain.Enums;
 
 namespace BookingSystem.Infrastructure.Configurations
 {

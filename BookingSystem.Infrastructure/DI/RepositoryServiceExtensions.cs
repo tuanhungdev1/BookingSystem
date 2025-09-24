@@ -13,6 +13,7 @@ namespace BookingSystem.Infrastructure.DI
 			services.AddScoped<IUserRepository, UserRepository>();
 			services.AddScoped<IUnitOfWork, UnitOfWork>();
 			services.AddScoped<IAccommodationRepository, AccommodationRepository>();
+			services.AddScoped<IAccommodationTypeRepository, AccommodationTypeRepository>();
 			// Thêm các repository khác tại đây
 
 			return services;

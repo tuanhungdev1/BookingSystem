@@ -2,7 +2,7 @@
 {
 	public class AccommodationAmenity
 	{
-		public Guid HotelId { get; set; }
+		public Guid AccommodationId { get; set; }
 		public Guid AmenityId { get; set; }
 		public DateTime AddedAt { get; set; } = DateTime.UtcNow;
 

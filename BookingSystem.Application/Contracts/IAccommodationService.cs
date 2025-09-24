@@ -13,7 +13,7 @@ namespace BookingSystem.Application.Contracts
 		Task<PagedResult<AccommodationDto>> GetPagedAsync(AccommodationFilter filter);
 		Task<IEnumerable<AccommodationDto>> SearchAsync(string searchTerm);
 		Task<IEnumerable<AccommodationDto>> GetByLocationAsync(string city, string country);
-		Task<IEnumerable<AccommodationDto>> GetByTypeAsync(Domain.Enums.AccommodationType type);
+		Task<IEnumerable<AccommodationDto>> GetByTypeAsync(Guid type);
 		Task<bool> ActivateAsync(Guid id);
 		Task<bool> DeactivateAsync(Guid id);
 	}

@@ -19,10 +19,10 @@ namespace BookingSystem.Infrastructure.Configurations
 
 			entity.HasOne(hi => hi.Accommodation)
 				.WithMany(h => h.HotelImages)
-				.HasForeignKey(hi => hi.HotelId)
+				.HasForeignKey(hi => hi.AccommodationId)
 				.OnDelete(DeleteBehavior.Cascade);
 
-			entity.HasIndex(hi => new { hi.HotelId, hi.Order })
+			entity.HasIndex(hi => new { hi.AccommodationId, hi.Order })
 				.HasDatabaseName("IX_HotelImages_HotelId_Order");
 		}
 	}

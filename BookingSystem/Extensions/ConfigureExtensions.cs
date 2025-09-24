@@ -9,6 +9,7 @@ namespace BookingSystem.Extensions
 			services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
 			services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
 			services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
+			services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
 			return services;
 		}
 	}

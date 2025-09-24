@@ -175,7 +175,7 @@ namespace BookingSystem.Application.Services
 			return accommodations.Select(a => _mapper.Map<AccommodationDto>(a));
 		}
 
-		public async Task<IEnumerable<AccommodationDto>> GetByTypeAsync(Domain.Enums.AccommodationType type)
+		public async Task<IEnumerable<AccommodationDto>> GetByTypeAsync(Guid type)
 		{
 			var accommodations = await _accommodationRepository.GetByTypeAsync(type);
 			return accommodations.Select(a => _mapper.Map<AccommodationDto>(a));

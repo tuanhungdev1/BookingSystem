@@ -1,6 +1,5 @@
 ﻿using BookingSystem.Domain.Base;
 using BookingSystem.Domain.Entities;
-using BookingSystem.Domain.Enums;
 using BookingSystem.Domain.Repositories;
 using BookingSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -38,9 +37,9 @@ namespace BookingSystem.Infrastructure.Repositories
 				query = query.Where(a => a.Country.ToLower().Contains(country));
 			}
 
-			if (filter.Type.HasValue)
+			if (!string.IsNullOrEmpty(filter.Type))
 			{
-				query = query.Where(a => a.Type == filter.Type.Value);
+				query = query.Where(a => a.Type.Name == filter.Type);
 			}
 
 			if (filter.MinStarRating.HasValue)
@@ -109,10 +108,10 @@ namespace BookingSystem.Infrastructure.Repositories
 				.ToListAsync();
 		}
 
-		public async Task<IEnumerable<Accommodation>> GetByTypeAsync(AccommodationType type)
+		public async Task<IEnumerable<Accommodation>> GetByTypeAsync(Guid AccommodationTypeId)
 		{
 			return await _dbSet
-				.Where(a => a.Type == type && a.IsActive)
+				.Where(a => a.Type.Id == AccommodationTypeId && a.IsActive)
 				.Include(a => a.RoomTypes)
 				.ToListAsync();
 		}

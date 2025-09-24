@@ -18,10 +18,10 @@ namespace BookingSystem.Domain.Entities
 		public string? Website { get; set; }
 		public int StarRating { get; set; } = 1; // 1-5 stars
 		public string? MainImage { get; set; }
-		public AccommodationType Type { get; set; } = AccommodationType.Hotel;
 		public bool IsActive { get; set; } = true;
-
 		// Navigation Properties
+		public Guid AccommodationTypeId { get; set; }
+		public virtual AccommodationType Type { get; set; }
 		public virtual ICollection<RoomType> RoomTypes { get; set; } = new HashSet<RoomType>();
 		public virtual ICollection<Room> Rooms { get; set; } = new HashSet<Room>();
 		public virtual ICollection<AccommodationAmenity> HotelAmenities { get; set; } = new HashSet<AccommodationAmenity>();

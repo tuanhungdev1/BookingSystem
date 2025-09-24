@@ -9,7 +9,7 @@ namespace BookingSystem.Domain.Entities
 		public string Floor { get; set; } = string.Empty;
 		public RoomStatus Status { get; set; } = RoomStatus.Available;
 		public string? Notes { get; set; }
-		public Guid HotelId { get; set; }
+		public Guid AccommodationId { get; set; }
 		public Guid RoomTypeId { get; set; }
 
 		// Navigation Properties

@@ -1,6 +1,6 @@
 ﻿namespace BookingSystem.Domain.Enums
 {
-	public enum AccommodationType
+	 enum AccommodationType
 	{
 		Hotel,          // Khách sạn
 		Resort,         // Khu nghỉ dưỡng

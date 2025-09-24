@@ -10,7 +10,7 @@ namespace BookingSystem.Domain.Repositories
 		Task<PagedResult<Accommodation>> GetPagedAsync(AccommodationFilter filter);
 		Task<IEnumerable<Accommodation>> SearchAsync(string searchTerm);
 		Task<IEnumerable<Accommodation>> GetByLocationAsync(string city, string country);
-		Task<IEnumerable<Accommodation>> GetByTypeAsync(AccommodationType type);
+		Task<IEnumerable<Accommodation>> GetByTypeAsync(Guid AccommodationTypeId);
 		Task<Accommodation?> GetWithDetailsAsync(Guid id);
 		Task<bool> IsNameExistsAsync(string name, Guid? excludeId = null);
 	}

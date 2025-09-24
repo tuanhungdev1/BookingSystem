@@ -11,7 +11,7 @@ namespace BookingSystem.Domain.Entities
 		public bool IsActive { get; set; } = true;
 
 		// Navigation Properties
-		public virtual ICollection<AccommodationAmenity> HotelAmenities { get; set; } = new HashSet<AccommodationAmenity>();
+		public virtual ICollection<AccommodationAmenity> AccommodationAmenities { get; set; } = new HashSet<AccommodationAmenity>();
 		public virtual ICollection<RoomTypeAmenity> RoomTypeAmenities { get; set; } = new HashSet<RoomTypeAmenity>();
 	}
 }
