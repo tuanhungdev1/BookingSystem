@@ -1,6 +1,4 @@
-﻿using BookingSystem.Domain.Enums;
-
-namespace BookingSystem.Application.DTOs.AccommodationDTO
+﻿namespace BookingSystem.Application.DTOs.AccommodationDTO
 {
 	namespace BookingSystem.Application.DTOs
 	{

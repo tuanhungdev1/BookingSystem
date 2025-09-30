@@ -12,7 +12,7 @@ namespace BookingSystem.Domain.Entities
 
 		public string Category { get; set; } = string.Empty;
 
-		public bool IsPopular { get; set; } = false;
+		public int UsageCount { get; set; } = 0;
 
 		public bool IsActive { get; set; } = true;
 

@@ -13,7 +13,7 @@ namespace BookingSystem.Infrastructure.DI
 			services.AddScoped<IUserRepository, UserRepository>();
 			services.AddScoped<IUnitOfWork, UnitOfWork>();
 			services.AddScoped<IHomestayRepository, HomestayRepository>();
-
+			services.AddScoped<IPropertyTypeRepository, PropertyTypeRepository>();
 			return services;
 		}
 	}

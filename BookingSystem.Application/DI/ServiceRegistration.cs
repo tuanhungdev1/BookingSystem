@@ -14,6 +14,7 @@ namespace BookingSystem.Application.DI
 			services.AddScoped<IUserService, UserService>();
 			services.AddScoped<IImageValidationService, ImageValidationService>();
 			services.AddScoped<ICloudinaryService, CloudinaryService>();
+			services.AddScoped<IPropertyTypeService, PropertyTypeService>();
 			return services;
 		}
 	}

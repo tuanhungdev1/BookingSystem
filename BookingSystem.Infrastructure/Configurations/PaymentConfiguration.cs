@@ -1,5 +1,4 @@
 ﻿using BookingSystem.Domain.Entities;
-using BookingSystem.Domain.Enums;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore;
 

@@ -1,4 +1,6 @@
-﻿using BookingSystem.Domain.Enums;
+﻿using BookingSystem.Application.DTOs.HomestayAmenityDTO;
+using BookingSystem.Application.DTOs.HomestayImageDTO;
+using BookingSystem.Application.DTOs.HomestayRuleDTO;
 using System.ComponentModel.DataAnnotations;
 
 namespace BookingSystem.Application.DTOs.AccommodationDTO
@@ -77,9 +79,25 @@ namespace BookingSystem.Application.DTOs.AccommodationDTO
 		public int MaximumNights { get; set; } = 365;
 
 		[Required(ErrorMessage = "OwnerId is required.")]
-		public string OwnerId { get; set; } = string.Empty;
+		public int OwnerId { get; set; } 
 
 		[Required(ErrorMessage = "PropertyTypeId is required.")]
 		public int PropertyTypeId { get; set; }
+
+		// Thông tin check-in/check-out
+		public TimeOnly CheckInTime { get; set; } = new TimeOnly(15, 0);
+		public TimeOnly CheckOutTime { get; set; } = new TimeOnly(11, 0);
+
+		// Cài đặt đặt phòng
+		public bool IsInstantBook { get; set; } = false;
+
+		// Collections
+		[Required(ErrorMessage = "At least one image is required.")]
+		[MinLength(1, ErrorMessage = "At least one image is required.")]
+		public List<CreateHomestayImageDto> Images { get; set; } = new List<CreateHomestayImageDto>();
+
+		public List<CreateHomestayAmenityDto> Amenities { get; set; } = new List<CreateHomestayAmenityDto>();
+
+		public List<CreateHomestayRuleDto> Rules { get; set; } = new List<CreateHomestayRuleDto>();
 	}
 }

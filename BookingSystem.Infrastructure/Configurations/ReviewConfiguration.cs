@@ -1,8 +1,6 @@
 ﻿using BookingSystem.Domain.Entities;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using static Org.BouncyCastle.Crypto.Engines.SM2Engine;
 
 namespace BookingSystem.Infrastructure.Configurations
 {

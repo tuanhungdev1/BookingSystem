@@ -37,8 +37,8 @@ namespace BookingSystem.Domain.Entities
 		public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 		public DateTime? UpdatedAt { get; set; }
 		public DateTime? LastLoginAt { get; set; }
-
 		// Navigation Properties
+		public HostProfile? HostProfile { get; set; }
 		public virtual ICollection<Homestay> OwnedHomestays { get; set; } = new List<Homestay>();
 		public virtual ICollection<Booking> GuestBookings { get; set; } = new List<Booking>();
 		public virtual ICollection<Review> WrittenReviews { get; set; } = new List<Review>();
