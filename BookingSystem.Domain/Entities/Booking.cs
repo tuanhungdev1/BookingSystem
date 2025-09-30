@@ -5,34 +5,51 @@ namespace BookingSystem.Domain.Entities
 {
 	public class Booking : BaseEntity
 	{
-		public string BookingNumber { get; set; } = string.Empty;
 		public DateTime CheckInDate { get; set; }
-		public DateTime CheckOutDate { get; set; }
-		public int NumberOfGuests { get; set; }
-		public int NumberOfRooms { get; set; }
-		public decimal TotalAmount { get; set; }
-		public decimal TaxAmount { get; set; }
-		public decimal DiscountAmount { get; set; }
-		public decimal FinalAmount { get; set; }
-		public BookingStatus Status { get; set; } = BookingStatus.Pending;
-		public string? SpecialRequests { get; set; }
-		public DateTime? CheckInTime { get; set; }
-		public DateTime? CheckOutTime { get; set; }
-		public Guid UserId { get; set; }
-		public Guid RoomTypeId { get; set; }
 
-		// Guest Information (for guests who don't register)
-		public string? GuestFirstName { get; set; }
-		public string? GuestLastName { get; set; }
-		public string? GuestEmail { get; set; }
-		public string? GuestPhone { get; set; }
+		public DateTime CheckOutDate { get; set; }
+
+		public int NumberOfGuests { get; set; }
+
+		public int NumberOfAdults { get; set; }
+
+		public int NumberOfChildren { get; set; }
+
+		public int NumberOfInfants { get; set; } = 0;
+
+		public decimal BaseAmount { get; set; }
+
+		public decimal CleaningFee { get; set; } = 0;
+
+		public decimal ServiceFee { get; set; } = 0;
+
+		public decimal TaxAmount { get; set; } = 0;
+
+		public decimal DiscountAmount { get; set; } = 0;
+
+		public decimal TotalAmount { get; set; }
+
+		public BookingStatus BookingStatus { get; set; } = BookingStatus.Pending;
+
+		public string? SpecialRequests { get; set; }
+
+		public string? CancellationReason { get; set; }
+
+		public DateTime? CancelledAt { get; set; }
+
+		public string? CancelledBy { get; set; }
+
+		public string BookingCode { get; set; } = string.Empty;
+
+		// Foreign Keys
+		public int GuestId { get; set; } 
+
+		public int HomestayId { get; set; }
 
 		// Navigation Properties
-		public virtual User User { get; set; } = null!;
-		public virtual RoomType RoomType { get; set; } = null!;
-		public virtual ICollection<BookingRoom> BookingRooms { get; set; } = new HashSet<BookingRoom>();
-		public virtual ICollection<Payment> Payments { get; set; } = new HashSet<Payment>();
-		public virtual ICollection<BookingGuest> BookingGuests { get; set; } = new HashSet<BookingGuest>();
-		public virtual Review? Review { get; set; }
+		public virtual User Guest { get; set; } = null!;
+		public virtual Homestay Homestay { get; set; } = null!;
+		public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
+		public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
 	}
 }

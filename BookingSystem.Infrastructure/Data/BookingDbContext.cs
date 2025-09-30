@@ -7,28 +7,26 @@ using System.Reflection;
 
 namespace BookingSystem.Infrastructure.Data
 {
-	public class BookingDbContext : IdentityDbContext<User, Role, Guid,
-	IdentityUserClaim<Guid>, UserRole, IdentityUserLogin<Guid>,
-	IdentityRoleClaim<Guid>, IdentityUserToken<Guid>>
+	public class BookingDbContext : IdentityDbContext<User, IdentityRole<int>, int>
 	{
 		public BookingDbContext(DbContextOptions<BookingDbContext> options) : base(options)
 		{
 		}
 
-		public DbSet<Accommodation> Accommodations { get; set; }
-		public DbSet<AccommodationType> AccommodationTypes { get; set; }
-		public DbSet<RoomType> RoomTypes { get; set; }
-		public DbSet<Room> Rooms { get; set; }
+		// DbSets
+		public DbSet<Homestay> Homestays { get; set; }
+		public DbSet<PropertyType> PropertyTypes { get; set; }
 		public DbSet<Amenity> Amenities { get; set; }
-		public DbSet<AccommodationAmenity> AccommodationAmenities { get; set; }
-		public DbSet<RoomTypeAmenity> RoomTypeAmenities { get; set; }
+		public DbSet<Rule> Rules { get; set; }
+		public DbSet<HomestayAmenity> HomestayAmenities { get; set; }
+		public DbSet<HomestayRule> HomestayRules { get; set; }
+		public DbSet<HomestayImage> HomestayImages { get; set; }
 		public DbSet<Booking> Bookings { get; set; }
-		public DbSet<BookingRoom> BookingRooms { get; set; }
-		public DbSet<BookingGuest> BookingGuests { get; set; }
 		public DbSet<Payment> Payments { get; set; }
 		public DbSet<Review> Reviews { get; set; }
-		public DbSet<AccommodationImage> AccommodationImages { get; set; }
-		public DbSet<RoomTypeImage> RoomTypeImages { get; set; }
+		public DbSet<WishlistItem> WishlistItems { get; set; }
+		public DbSet<AvailabilityCalendar> AvailabilityCalendars { get; set; }
+		public DbSet<UserPreference> UserPreferences { get; set; }
 
 		protected override void OnModelCreating(ModelBuilder builder)
 		{
@@ -38,10 +36,10 @@ namespace BookingSystem.Infrastructure.Data
 			builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
 			// Configure Identity tables
-			builder.Entity<IdentityUserClaim<Guid>>().ToTable("UserClaims");
-			builder.Entity<IdentityUserLogin<Guid>>().ToTable("UserLogins");
-			builder.Entity<IdentityUserToken<Guid>>().ToTable("UserTokens");
-			builder.Entity<IdentityRoleClaim<Guid>>().ToTable("RoleClaims");
+			builder.Entity<IdentityUserClaim<int>>().ToTable("UserClaims");
+			builder.Entity<IdentityUserLogin<int>>().ToTable("UserLogins");
+			builder.Entity<IdentityUserToken<int>>().ToTable("UserTokens");
+			builder.Entity<IdentityRoleClaim<int>>().ToTable("RoleClaims");
 		}
 	}
 }

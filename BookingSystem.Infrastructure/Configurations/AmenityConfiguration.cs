@@ -10,25 +10,37 @@ namespace BookingSystem.Infrastructure.Configurations
 		{
 			builder.ToTable("Amenities");
 
-			builder.Property(a => a.Name)
+			// Properties Configuration
+			builder.Property(a => a.AmenityName)
 				.IsRequired()
 				.HasMaxLength(100);
 
-			builder.Property(a => a.Description)
+			builder.Property(a => a.AmenityDescription)
 				.HasMaxLength(500);
 
-			builder.Property(a => a.Icon)
-				.HasMaxLength(100);
+			builder.Property(a => a.IconUrl)
+				.HasMaxLength(200);
 
 			builder.Property(a => a.Category)
+				.IsRequired()
 				.HasMaxLength(50);
 
-			builder.HasIndex(a => a.Name)
-				.IsUnique()
-				.HasDatabaseName("IX_Amenities_Name");
+			builder.Property(a => a.IsPopular)
+				.HasDefaultValue(false);
 
-			builder.HasIndex(a => a.Category)
-				.HasDatabaseName("IX_Amenities_Category");
+			builder.Property(a => a.IsActive)
+				.HasDefaultValue(true);
+
+			builder.Property(a => a.DisplayOrder)
+				.HasDefaultValue(0);
+
+			// Indexes
+			builder.HasIndex(a => a.Category);
+			builder.HasIndex(a => new { a.IsActive, a.IsPopular });
+			builder.HasIndex(a => new { a.Category, a.DisplayOrder });
+
+			// Query Filters
+			builder.HasQueryFilter(a => !a.IsDeleted);
 		}
 	}
 }

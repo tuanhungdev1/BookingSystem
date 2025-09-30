@@ -19,7 +19,7 @@ namespace BookingSystem.Extensions
 		public static IServiceCollection AddIdentityConfiguration(this IServiceCollection services, IConfiguration configuration)
 		{
 			// Identity Configuration
-			services.AddIdentity<User, IdentityRole<Guid>>(options =>
+			services.AddIdentity<User, IdentityRole<int>>(options =>
 			{
 				// Password settings
 				options.Password.RequireDigit = true;

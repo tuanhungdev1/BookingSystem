@@ -27,8 +27,8 @@ namespace BookingSystem.Controllers
 			_userManager = userManager;
 		}
 
-		[HttpGet("{id:guid}")]
-		public async Task<ActionResult<ApiResponse<UserProfileDto>>> GetUserProfile(Guid id)
+		[HttpGet("{id:int}")]
+		public async Task<ActionResult<ApiResponse<UserProfileDto>>> GetUserProfile(int id)
 		{
 			var user = await _userService.GetUserProfileAsync(id);
 			if (user == null)
@@ -82,8 +82,8 @@ namespace BookingSystem.Controllers
 			});
 		}
 
-		[HttpPut("{id:guid}")]
-		public async Task<ActionResult<ApiResponse<object>>> UpdateUser(Guid id, UpdateUserDto updateUserDto)
+		[HttpPut("{id:int}")]
+		public async Task<ActionResult<ApiResponse<object>>> UpdateUser(int id, UpdateUserDto updateUserDto)
 		{
 			// Users can only update their own profile unless they're admin
 			var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -111,9 +111,9 @@ namespace BookingSystem.Controllers
 			});
 		}
 
-		[HttpDelete("{id:guid}")]
+		[HttpDelete("{id:int}")]
 		[Authorize(Roles = "SuperAdmin")] // Only super admin can delete users
-		public async Task<ActionResult<ApiResponse<object>>> DeleteUser(Guid id)
+		public async Task<ActionResult<ApiResponse<object>>> DeleteUser(int id)
 		{
 			var success = await _userService.DeleteUserAsync(id);
 			if (!success)
@@ -145,9 +145,9 @@ namespace BookingSystem.Controllers
 			});
 		}
 
-		[HttpPut("{id:guid}/status")]
+		[HttpPut("{id:int}/status")]
 		[Authorize(Roles = "SuperAdmin,Admin")]
-		public async Task<ActionResult<ApiResponse<object>>> ChangeUserStatus(Guid id, [FromBody] bool isActive)
+		public async Task<ActionResult<ApiResponse<object>>> ChangeUserStatus(int id, [FromBody] bool isActive)
 		{
 			var success = await _userService.ChangeUserStatusAsync(id, isActive);
 			if (!success)
@@ -166,9 +166,9 @@ namespace BookingSystem.Controllers
 			});
 		}
 
-		[HttpPost("{id:guid}/roles")]
+		[HttpPost("{id:int}/roles")]
 		[Authorize(Roles = "SuperAdmin")]
-		public async Task<ActionResult<ApiResponse<object>>> AssignRoles(Guid id, [FromBody] IEnumerable<string> roles)
+		public async Task<ActionResult<ApiResponse<object>>> AssignRoles(int id, [FromBody] IEnumerable<string> roles)
 		{
 			var success = await _userService.AssignRolesAsync(id, roles);
 			if (!success)
@@ -187,9 +187,9 @@ namespace BookingSystem.Controllers
 			});
 		}
 
-		[HttpDelete("{id:guid}/roles")]
+		[HttpDelete("{id:int}/roles")]
 		[Authorize(Roles = "SuperAdmin")]
-		public async Task<ActionResult<ApiResponse<object>>> RemoveRoles(Guid id, [FromBody] IEnumerable<string> roles)
+		public async Task<ActionResult<ApiResponse<object>>> RemoveRoles(int id, [FromBody] IEnumerable<string> roles)
 		{
 			var success = await _userService.RemoveRolesAsync(id, roles);
 			if (!success)
@@ -208,9 +208,9 @@ namespace BookingSystem.Controllers
 			});
 		}
 
-		[HttpGet("{id:guid}/roles")]
+		[HttpGet("{id:int}/roles")]
 		[Authorize(Roles = "SuperAdmin,Admin")]
-		public async Task<ActionResult<ApiResponse<IEnumerable<string>>>> GetUserRoles(Guid id)
+		public async Task<ActionResult<ApiResponse<IEnumerable<string>>>> GetUserRoles(int id)
 		{
 			var roles = await _userService.GetUserRolesAsync(id);
 			return Ok(new ApiResponse<IEnumerable<string>>
@@ -221,9 +221,9 @@ namespace BookingSystem.Controllers
 			});
 		}
 
-		[HttpPut("{id:guid}/password")]
+		[HttpPut("{id:int}/password")]
 		[Authorize(Roles = "SuperAdmin,Admin")]
-		public async Task<ActionResult<ApiResponse<object>>> UpdateUserPassword(Guid id, [FromBody] string newPassword)
+		public async Task<ActionResult<ApiResponse<object>>> UpdateUserPassword(int id, [FromBody] string newPassword)
 		{
 			var success = await _userService.UpdateUserPasswordAsync(id, newPassword);
 			if (!success)
@@ -242,8 +242,8 @@ namespace BookingSystem.Controllers
 			});
 		}
 
-		[HttpPut("{id:guid}/avatar")]
-		public async Task<ActionResult<ApiResponse<object>>> UpdateUserAvatar(Guid id, [FromBody] string avatarUrl)
+		[HttpPut("{id:int}/avatar")]
+		public async Task<ActionResult<ApiResponse<object>>> UpdateUserAvatar(int id, [FromBody] string avatarUrl)
 		{
 			// Users can only update their own avatar unless they're admin
 			var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -284,9 +284,9 @@ namespace BookingSystem.Controllers
 			});
 		}
 
-		[HttpPut("{id:guid}/unlock")]
+		[HttpPut("{id:int}/unlock")]
 		[Authorize(Roles = "SuperAdmin,Admin")]
-		public async Task<ActionResult<ApiResponse<object>>> UnlockUser(Guid id)
+		public async Task<ActionResult<ApiResponse<object>>> UnlockUser(int id)
 		{
 			var success = await _userService.UnlockUserAsync(id);
 			if (!success)
@@ -305,9 +305,9 @@ namespace BookingSystem.Controllers
 			});
 		}
 
-		[HttpPut("{id:guid}/lock")]
+		[HttpPut("{id:int}/lock")]
 		[Authorize(Roles = "SuperAdmin,Admin")]
-		public async Task<ActionResult<ApiResponse<object>>> LockUser(Guid id)
+		public async Task<ActionResult<ApiResponse<object>>> LockUser(int id)
 		{
 			var success = await _userService.LockUserAsync(id);
 			if (!success)
@@ -326,9 +326,9 @@ namespace BookingSystem.Controllers
 			});
 		}
 
-		//[HttpPost("{id:guid}/reset-password")]
+		//[HttpPost("{id:int}/reset-password")]
 		//[Authorize(Roles = "SuperAdmin,Admin")]
-		//public async Task<ActionResult<ApiResponse<object>>> ResetUserPassword(Guid id, [FromBody] ResetUserPasswordRequest request)
+		//public async Task<ActionResult<ApiResponse<object>>> ResetUserPassword(int id, [FromBody] ResetUserPasswordRequest request)
 		//{
 		//	try
 		//	{
@@ -373,7 +373,7 @@ namespace BookingSystem.Controllers
 				});
 			}
 
-			var user = await _userService.GetUserProfileAsync(Guid.Parse(currentUserId));
+			var user = await _userService.GetUserProfileAsync(int.Parse(currentUserId));
 			if (user == null)
 			{
 				return NotFound(new ApiResponse<UserProfileDto>

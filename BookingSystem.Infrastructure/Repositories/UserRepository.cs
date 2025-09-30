@@ -61,7 +61,6 @@ namespace BookingSystem.Infrastructure.Repositories
 			var items = await query
 				.Skip((filter.PageNumber - 1) * filter.PageSize)
 				.Take(filter.PageSize)
-				.Include(a => a.UserRoles)
 				.ToListAsync();
 
 			return new PagedResult<User>

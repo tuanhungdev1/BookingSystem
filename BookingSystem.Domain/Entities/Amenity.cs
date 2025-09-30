@@ -4,14 +4,21 @@ namespace BookingSystem.Domain.Entities
 {
 	public class Amenity : BaseEntity
 	{
-		public string Name { get; set; } = string.Empty;
-		public string? Description { get; set; }
-		public string? Icon { get; set; }
-		public string Category { get; set; } = string.Empty; // Hotel, Room, General
+		public string AmenityName { get; set; } = string.Empty;
+
+		public string? AmenityDescription { get; set; }
+
+		public string? IconUrl { get; set; }
+
+		public string Category { get; set; } = string.Empty;
+
+		public bool IsPopular { get; set; } = false;
+
 		public bool IsActive { get; set; } = true;
 
+		public int DisplayOrder { get; set; } = 0;
+
 		// Navigation Properties
-		public virtual ICollection<AccommodationAmenity> AccommodationAmenities { get; set; } = new HashSet<AccommodationAmenity>();
-		public virtual ICollection<RoomTypeAmenity> RoomTypeAmenities { get; set; } = new HashSet<RoomTypeAmenity>();
+		public virtual ICollection<HomestayAmenity> HomestayAmenities { get; set; } = new List<HomestayAmenity>();
 	}
 }

@@ -11,37 +11,42 @@ namespace BookingSystem.Infrastructure.Configurations
 		{
 			builder.ToTable("Payments");
 
-			builder.Property(p => p.PaymentNumber)
-				.IsRequired()
-				.HasMaxLength(50);
+			// Properties Configuration
+			builder.Property(p => p.PaymentAmount)
+				.HasPrecision(18, 2);
 
-			builder.Property(p => p.Amount)
-				.HasPrecision(10, 2);
-
-			builder.Property(p => p.Method)
-				.HasConversion<int>();
-
-			builder.Property(p => p.Status)
-				.HasConversion<int>()
-				.HasDefaultValue(PaymentStatus.Pending);
+			builder.Property(p => p.RefundAmount)
+				.HasPrecision(18, 2);
 
 			builder.Property(p => p.TransactionId)
 				.HasMaxLength(100);
 
-			builder.Property(p => p.Notes)
+			builder.Property(p => p.PaymentGatewayId)
+				.HasMaxLength(100);
+
+			builder.Property(p => p.PaymentGateway)
+				.HasMaxLength(50);
+
+			builder.Property(p => p.PaymentNotes)
+				.HasMaxLength(1000);
+
+			builder.Property(p => p.FailureReason)
 				.HasMaxLength(500);
 
+			// Relationships
 			builder.HasOne(p => p.Booking)
 				.WithMany(b => b.Payments)
 				.HasForeignKey(p => p.BookingId)
 				.OnDelete(DeleteBehavior.Cascade);
 
-			builder.HasIndex(p => p.PaymentNumber)
-				.IsUnique()
-				.HasDatabaseName("IX_Payments_PaymentNumber");
+			// Indexes
+			builder.HasIndex(p => p.TransactionId);
+			builder.HasIndex(p => p.PaymentGatewayId);
+			builder.HasIndex(p => new { p.BookingId, p.PaymentStatus });
+			builder.HasIndex(p => new { p.PaymentMethod, p.PaymentStatus });
 
-			builder.HasIndex(p => p.TransactionId)
-				.HasDatabaseName("IX_Payments_TransactionId");
+			// Query Filters
+			builder.HasQueryFilter(p => !p.IsDeleted);
 		}
 	}
 }

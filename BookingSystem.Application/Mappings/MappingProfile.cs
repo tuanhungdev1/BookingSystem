@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using BookingSystem.Application.DTOs.AccommodationDTO;
+using BookingSystem.Application.DTOs.AccommodationDTO.BookingSystem.Application.DTOs;
 using BookingSystem.Application.DTOs.UserDTO;
 using BookingSystem.Application.Models.Responses;
 using BookingSystem.Domain.Entities;
@@ -25,9 +26,9 @@ namespace BookingSystem.Application.Mappings
 
 		public void ConfigureAccommodationMappings()
 		{
-			CreateMap<CreateAccommodationRequest, Accommodation>();
-			CreateMap<UpdateAccommodationRequest, Accommodation>();
-			CreateMap<Accommodation, AccommodationDto>();
+			CreateMap<CreateHomestayDto, Homestay>();
+			CreateMap<UpdateHomestayDto, Homestay>();
+			CreateMap<Homestay, HomestayDto>();
 		}
 	}
 }

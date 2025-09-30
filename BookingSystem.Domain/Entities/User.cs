@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace BookingSystem.Domain.Entities
 {
-	public class User : IdentityUser<Guid>
+	public class User : IdentityUser<int>
 	{
 		public string FirstName { get; set; } = string.Empty;
 		public string LastName { get; set; } = string.Empty;
@@ -39,9 +39,12 @@ namespace BookingSystem.Domain.Entities
 		public DateTime? LastLoginAt { get; set; }
 
 		// Navigation Properties
-		public virtual ICollection<Booking> Bookings { get; set; } = new HashSet<Booking>();
-		public virtual ICollection<Review> Reviews { get; set; } = new HashSet<Review>();
-		public virtual ICollection<UserRole> UserRoles { get; set; } = new HashSet<UserRole>();
+		public virtual ICollection<Homestay> OwnedHomestays { get; set; } = new List<Homestay>();
+		public virtual ICollection<Booking> GuestBookings { get; set; } = new List<Booking>();
+		public virtual ICollection<Review> WrittenReviews { get; set; } = new List<Review>();
+		public virtual ICollection<Review> ReceivedReviews { get; set; } = new List<Review>();
+		public virtual ICollection<WishlistItem> WishlistItems { get; set; } = new List<WishlistItem>();
+		public virtual ICollection<UserPreference> UserPreferences { get; set; } = new List<UserPreference>();
 
 		public string FullName => $"{FirstName} {LastName}";
 

@@ -10,9 +10,9 @@ namespace BookingSystem.Extensions
 			{
 				c.SwaggerDoc("v1", new OpenApiInfo
 				{
-					Title = "Food Order API",
+					Title = "Nextstay Booking",
 					Version = "v1",
-					Description = "Food Order Management System API"
+					Description = "Booking Homestay Management System API"
 				});
 
 				// Add JWT Authentication to Swagger

@@ -1,0 +1,85 @@
+﻿using BookingSystem.Domain.Enums;
+using System.ComponentModel.DataAnnotations;
+
+namespace BookingSystem.Application.DTOs.AccommodationDTO
+{
+	public class CreateHomestayDto
+	{
+		[Required(ErrorMessage = "Homestay title is required.")]
+		[MaxLength(200, ErrorMessage = "Homestay title cannot exceed 200 characters.")]
+		public string HomestayTitle { get; set; } = string.Empty;
+
+		[MaxLength(2000, ErrorMessage = "Description cannot exceed 2000 characters.")]
+		public string? HomestayDescription { get; set; }
+
+		[Required(ErrorMessage = "Full address is required.")]
+		[MaxLength(300, ErrorMessage = "Full address cannot exceed 300 characters.")]
+		public string FullAddress { get; set; } = string.Empty;
+
+		[Required(ErrorMessage = "City is required.")]
+		[MaxLength(100, ErrorMessage = "City cannot exceed 100 characters.")]
+		public string City { get; set; } = string.Empty;
+
+		[Required(ErrorMessage = "Province is required.")]
+		[MaxLength(100, ErrorMessage = "Province cannot exceed 100 characters.")]
+		public string Province { get; set; } = string.Empty;
+
+		[Required(ErrorMessage = "Country is required.")]
+		[MaxLength(100, ErrorMessage = "Country cannot exceed 100 characters.")]
+		public string Country { get; set; } = "Vietnam";
+
+		[MaxLength(20, ErrorMessage = "Postal code cannot exceed 20 characters.")]
+		public string? PostalCode { get; set; }
+
+		[Required(ErrorMessage = "Latitude is required.")]
+		[Range(-90, 90, ErrorMessage = "Latitude must be between -90 and 90.")]
+		public decimal Latitude { get; set; }
+
+		[Required(ErrorMessage = "Longitude is required.")]
+		[Range(-180, 180, ErrorMessage = "Longitude must be between -180 and 180.")]
+		public decimal Longitude { get; set; }
+
+		[Required(ErrorMessage = "Maximum guests is required.")]
+		[Range(1, 50, ErrorMessage = "Maximum guests must be between 1 and 50.")]
+		public int MaximumGuests { get; set; }
+
+		[Required(ErrorMessage = "Number of bedrooms is required.")]
+		[Range(0, 50, ErrorMessage = "Number of bedrooms must be between 0 and 50.")]
+		public int NumberOfBedrooms { get; set; }
+
+		[Required(ErrorMessage = "Number of bathrooms is required.")]
+		[Range(0, 50, ErrorMessage = "Number of bathrooms must be between 0 and 50.")]
+		public int NumberOfBathrooms { get; set; }
+
+		[Required(ErrorMessage = "Number of beds is required.")]
+		[Range(0, 50, ErrorMessage = "Number of beds must be between 0 and 50.")]
+		public int NumberOfBeds { get; set; }
+
+		[Required(ErrorMessage = "Base nightly price is required.")]
+		[Range(0, 1000000, ErrorMessage = "Base nightly price must be greater than 0.")]
+		public decimal BaseNightlyPrice { get; set; }
+
+		[Range(0, 1000000, ErrorMessage = "Weekend price must be greater than or equal to 0.")]
+		public decimal? WeekendPrice { get; set; }
+
+		[Range(0, 100, ErrorMessage = "Weekly discount must be between 0% and 100%.")]
+		public decimal? WeeklyDiscount { get; set; }
+
+		[Range(0, 100, ErrorMessage = "Monthly discount must be between 0% and 100%.")]
+		public decimal? MonthlyDiscount { get; set; }
+
+		[Required(ErrorMessage = "Minimum nights is required.")]
+		[Range(1, 30, ErrorMessage = "Minimum nights must be between 1 and 30.")]
+		public int MinimumNights { get; set; } = 1;
+
+		[Required(ErrorMessage = "Maximum nights is required.")]
+		[Range(1, 365, ErrorMessage = "Maximum nights must be between 1 and 365.")]
+		public int MaximumNights { get; set; } = 365;
+
+		[Required(ErrorMessage = "OwnerId is required.")]
+		public string OwnerId { get; set; } = string.Empty;
+
+		[Required(ErrorMessage = "PropertyTypeId is required.")]
+		public int PropertyTypeId { get; set; }
+	}
+}

@@ -24,7 +24,7 @@ namespace BookingSystem.Application.Services
 		private readonly ILogger<UserService> _logger;
 		private readonly IMapper _mapper;
 		private readonly UserManager<User> _userManager;
-		private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+		private readonly RoleManager<IdentityRole<int>> _roleManager;
 		private readonly IUnitOfWork _unitOfWork;
 
 		public UserService(
@@ -32,7 +32,7 @@ namespace BookingSystem.Application.Services
 			ILogger<UserService> logger,
 			IMapper mapper,
 			UserManager<User> userManager,
-			RoleManager<IdentityRole<Guid>> roleManager,
+			RoleManager<IdentityRole<int>> roleManager,
 			IUnitOfWork unitOfWork)
 		{
 			_userRepository = userRepository;
@@ -43,7 +43,7 @@ namespace BookingSystem.Application.Services
 			_unitOfWork = unitOfWork;
 		}
 
-		public async Task<UserProfileDto?> GetUserProfileAsync(Guid userId)
+		public async Task<UserProfileDto?> GetUserProfileAsync(int userId)
 		{
 			try
 			{
@@ -149,7 +149,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<bool> UpdateUserAsync(Guid userId, UpdateUserDto request)
+		public async Task<bool> UpdateUserAsync(int userId, UpdateUserDto request)
 		{
 			try
 			{
@@ -189,7 +189,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<bool> DeleteUserAsync(Guid userId)
+		public async Task<bool> DeleteUserAsync(int userId)
 		{
 			try
 			{
@@ -249,7 +249,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<bool> ChangeUserStatusAsync(Guid userId, bool isActive)
+		public async Task<bool> ChangeUserStatusAsync(int userId, bool isActive)
 		{
 			try
 			{
@@ -279,7 +279,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<bool> AssignRolesAsync(Guid userId, IEnumerable<string> roles)
+		public async Task<bool> AssignRolesAsync(int userId, IEnumerable<string> roles)
 		{
 			try
 			{
@@ -318,7 +318,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<bool> RemoveRolesAsync(Guid userId, IEnumerable<string> roles)
+		public async Task<bool> RemoveRolesAsync(int userId, IEnumerable<string> roles)
 		{
 			try
 			{
@@ -347,7 +347,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<IEnumerable<string>> GetUserRolesAsync(Guid userId)
+		public async Task<IEnumerable<string>> GetUserRolesAsync(int userId)
 		{
 			try
 			{
@@ -367,7 +367,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<bool> UpdateUserPasswordAsync(Guid userId, string newPassword)
+		public async Task<bool> UpdateUserPasswordAsync(int userId, string newPassword)
 		{
 			try
 			{
@@ -404,7 +404,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<bool> UpdateUserAvatarAsync(Guid userId, string avatarUrl)
+		public async Task<bool> UpdateUserAvatarAsync(int userId, string avatarUrl)
 		{
 			try
 			{
@@ -447,7 +447,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<bool> UnlockUserAsync(Guid userId)
+		public async Task<bool> UnlockUserAsync(int userId)
 		{
 			try
 			{
@@ -476,7 +476,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<bool> LockUserAsync(Guid userId)
+		public async Task<bool> LockUserAsync(int userId)
 		{
 			try
 			{
@@ -506,7 +506,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<bool> ResetUserPasswordAsync(Guid userId, string resetToken, string newPassword)
+		public async Task<bool> ResetUserPasswordAsync(int userId, string resetToken, string newPassword)
 		{
 			try
 			{
