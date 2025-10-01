@@ -1,0 +1,47 @@
+﻿namespace BookingSystem.Application.DTOs.HostProfileDTO
+{
+	public class HostProfileDto
+	{
+		public int Id { get; set; }
+		public int UserId { get; set; }
+
+		// Thông tin đăng ký
+		public string? BusinessName { get; set; }
+		public string? AboutMe { get; set; }
+		public string? Languages { get; set; }
+
+		// Thông tin ngân hàng
+		public string BankName { get; set; } = string.Empty;
+		public string BankAccountNumber { get; set; } = string.Empty;
+		public string BankAccountName { get; set; } = string.Empty;
+
+		// Tài liệu xác minh (URL)
+		public string? IdentityCardFrontUrl { get; set; }
+		public string? IdentityCardBackUrl { get; set; }
+		public string? BusinessLicenseUrl { get; set; }
+		public string? TaxCodeDocumentUrl { get; set; }
+		public string? TaxCode { get; set; }
+
+		// Statistics
+		public int TotalHomestays { get; set; }
+		public int TotalBookings { get; set; }
+		public decimal AverageRating { get; set; }
+		public int ResponseRate { get; set; }
+		public TimeSpan? AverageResponseTime { get; set; }
+
+		// Status
+		public bool IsActive { get; set; }
+		public bool IsSuperhost { get; set; }
+		public DateTime RegisteredAsHostAt { get; set; }
+		public string Status { get; set; } = string.Empty;
+
+		// Review
+		public int? ReviewedByAdminId { get; set; }
+		public DateTime? ReviewedAt { get; set; }
+		public string? ReviewNote { get; set; }
+
+		// Thông tin bổ sung
+		public string? ApplicantNote { get; set; }
+		public DateTime SubmittedAt { get; set; }
+	}
+}
