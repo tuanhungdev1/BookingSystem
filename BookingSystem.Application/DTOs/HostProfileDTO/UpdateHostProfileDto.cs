@@ -12,12 +12,6 @@ namespace BookingSystem.Application.DTOs.HostProfileDTO
 		public string? BankAccountNumber { get; set; }
 		public string? BankAccountName { get; set; }
 
-		// Cho phép update file mới
-		public IFormFile? IdentityCardFrontFile { get; set; }
-		public IFormFile? IdentityCardBackFile { get; set; }
-		public IFormFile? BusinessLicenseFile { get; set; }
-		public IFormFile? TaxCodeDocumentFile { get; set; }
-
 		public string? TaxCode { get; set; }
 		public string? ApplicantNote { get; set; }
 	}

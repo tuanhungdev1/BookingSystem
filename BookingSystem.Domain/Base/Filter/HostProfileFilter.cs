@@ -29,5 +29,8 @@ namespace BookingSystem.Domain.Base.Filter
 
 		public int? MinResponseRate { get; set; }
 		public int? MaxResponseRate { get; set; }
+
+		public string? SortBy { get; set; } = "RegisteredAsHostAt"; // Default sort by RegisteredAsHostAt
+		public string? SortDirection { get; set; } = "desc"; // Default descending
 	}
 }

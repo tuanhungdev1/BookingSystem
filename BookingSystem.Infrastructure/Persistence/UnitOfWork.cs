@@ -14,14 +14,26 @@ namespace BookingSystem.Infrastructure.Persistence
 		private bool _disposed;
 
 		private readonly Lazy<IUserRepository> _userRepository;
+		private readonly Lazy<IAmenityRepository> _amenityRepository;
+		private readonly Lazy<IHomestayRepository> _homestayRepository;
+		private readonly Lazy<IPropertyTypeRepository> _propertyTypeRepository;
+		private readonly Lazy<IHostProfileRepository> _hostProfileRepository;
 
 		public UnitOfWork(BookingDbContext context)
 		{
 			_context = context ?? throw new ArgumentNullException(nameof(context));
 			_userRepository = new Lazy<IUserRepository>(() => new UserRepository(_context));
+			_amenityRepository = new Lazy<IAmenityRepository>(() => new AmenityRepository(_context));
+			_homestayRepository = new Lazy<IHomestayRepository>(() => new HomestayRepository(_context));
+			_propertyTypeRepository = new Lazy<IPropertyTypeRepository>(() => new PropertyTypeRepository(_context));
+			_hostProfileRepository = new Lazy<IHostProfileRepository>(() => new HostProfileRepository(_context));
 		}
 
 		public IUserRepository UserRepository => _userRepository.Value;
+		public IAmenityRepository AmenityRepository => _amenityRepository.Value;
+		public IHomestayRepository HomestayRepository => _homestayRepository.Value;
+		public IPropertyTypeRepository PropertyTypeRepository => _propertyTypeRepository.Value;
+		public IHostProfileRepository HostProfileRepository => _hostProfileRepository.Value;
 
 		public async Task BeginTransactionAsync()
 		{

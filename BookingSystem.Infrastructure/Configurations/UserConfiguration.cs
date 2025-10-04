@@ -45,6 +45,12 @@ namespace BookingSystem.Infrastructure.Configurations
 
 			builder.HasIndex(u => new { u.FirstName, u.LastName })
 				.HasDatabaseName("IX_Users_FullName");
+
+			// Relationships
+			builder.HasOne(u => u.HostProfile)
+				.WithOne(hp => hp.User)
+				.HasForeignKey<HostProfile>(hp => hp.UserId)
+				.OnDelete(DeleteBehavior.Cascade);
 		}
 	}
 }

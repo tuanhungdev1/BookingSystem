@@ -14,6 +14,8 @@ namespace BookingSystem.Infrastructure.DI
 			services.AddScoped<IUnitOfWork, UnitOfWork>();
 			services.AddScoped<IHomestayRepository, HomestayRepository>();
 			services.AddScoped<IPropertyTypeRepository, PropertyTypeRepository>();
+			services.AddScoped<IAmenityRepository, AmenityRepository>();
+			services.AddScoped<IHostProfileRepository, HostProfileRepository>();
 			return services;
 		}
 	}
