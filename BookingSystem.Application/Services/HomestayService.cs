@@ -10,6 +10,8 @@ using BookingSystem.Domain.Entities;
 using BookingSystem.Application.DTOs.ImageDTO;
 using BookingSystem.Application.Models.Constants;
 using BookingSystem.Domain.Base.Filter;
+using BookingSystem.Application.DTOs.AccommodationDTO.BookingSystem.Application.DTOs;
+using BookingSystem.Application.DTOs.HomestayImageDTO;
 
 namespace BookingSystem.Application.Services
 {
@@ -54,6 +56,199 @@ namespace BookingSystem.Application.Services
 			_homestayAmenityRepository = homestayAmenityRepository;
 			_ruleRepository = ruleRepository;
 			_homestayRuleRepository = homestayRuleRepository;
+		}
+
+		public async Task<bool> UpdateHomestayImages(int homestayId, int owerId, UpdateHomestayImagesDto updateHomestayImages)
+		{
+			// check ower exist
+			var existingOwner = await _userManager.FindByIdAsync(owerId.ToString());
+			if (existingOwner == null)
+			{
+				_logger.LogWarning("Owner with ID {OwnerId} not found.", owerId);
+				throw new NotFoundException($"Owner with ID {owerId} not found.");
+			}
+			// Check role of user is "Host" and "Admin"
+			var roles = await _userManager.GetRolesAsync(existingOwner);
+			if (!roles.Contains("Host") && !roles.Contains("Admin"))
+			{
+				_logger.LogWarning("User with ID {OwnerId} does not have the 'Host' or 'Admin' role.", owerId);
+				throw new BadRequestException($"User with ID {owerId} does not have the 'Host' or 'Admin' role.");
+			}
+			// if not Admin, check owerId is the homestay's owner
+			if (!roles.Contains("Admin"))
+			{
+				var homestay = await _homestayRepository.GetByIdAsync(homestayId);
+				if (homestay == null)
+				{
+					_logger.LogWarning("Homestay with ID {HomestayId} not found.", homestayId);
+					throw new NotFoundException($"Homestay with ID {homestayId} not found.");
+				}
+				if (homestay.OwnerId != existingOwner.Id)
+				{
+					_logger.LogWarning("User with ID {OwnerId} does not have permission to update this homestay.", owerId);
+					throw new BadRequestException($"User with ID {owerId} does not have permission to update this homestay.");
+				}
+			}
+			var homestayToUpdate = await _homestayRepository.GetByIdAsync(homestayId);
+			if (homestayToUpdate == null)
+			{
+				_logger.LogWarning("Homestay with ID {HomestayId} not found.", homestayId);
+				throw new NotFoundException($"Homestay with ID {homestayId} not found.");
+			}
+
+			var uploadedPublicIds = new List<string>();
+
+			try
+			{
+				await _unitOfWork.BeginTransactionAsync();
+
+				var existingImages = await _homestayImageRepository.GetByHomestayIdAsync(homestayId);
+
+				var imagesToDelete = existingImages.Where(img => !updateHomestayImages.KeepImageIds.Contains(img.Id)).ToList();
+
+				// Get public IDs of images to delete for Cloudinary deletion
+				var publicIdsToDelete = imagesToDelete
+					.Select(img => _cloudinaryService.GetPublicIdFromUrl(img.ImageUrl))
+					.ToList();
+
+				// Delete images from Cloudinary
+
+				foreach (var publicId in publicIdsToDelete)
+				{
+					var deleteResult = await _cloudinaryService.DeleteImageAsync(publicId);
+					if (!deleteResult.Success)
+					{
+						_logger.LogWarning("Failed to delete image with PublicId {PublicId} from Cloudinary.", publicId);
+						throw new BadRequestException($"Failed to delete image with PublicId {publicId} from Cloudinary.");
+					}
+				}
+
+				// Remove image records from database
+
+				foreach (var image in imagesToDelete)
+				{
+					_homestayImageRepository.Remove(image);
+				}
+				await _homestayImageRepository.SaveChangesAsync();
+
+				// Upload new images to Cloudinary and create HomestayImage records
+
+				foreach (var imageDto in updateHomestayImages.NewImages)
+				{
+					var uploadResult = await _cloudinaryService.UploadImageAsync(new ImageUploadDto
+					{
+						File = imageDto.ImageFile,
+						Folder = $"{FolderImages.Homestays}/{homestayToUpdate.Id}"
+					});
+					if (!uploadResult.Success || uploadResult.Data == null)
+					{
+						_logger.LogError("Image upload failed: {ErrorMessage}", uploadResult.ErrorMessage);
+						throw new BadRequestException($"Image upload failed: {uploadResult.ErrorMessage}");
+					}
+					// Keep track of successfully uploaded images for potential rollback
+					uploadedPublicIds.Add(uploadResult.Data.PublicId);
+					// Use AutoMapper to map ImageResponseDto to HomestayImage entity
+					var homestayImage = _mapper.Map<HomestayImage>(imageDto);
+					homestayImage.HomestayId = homestayToUpdate.Id;
+					homestayImage.ImageUrl = uploadResult.Data.Url;
+					await _homestayImageRepository.AddAsync(homestayImage);
+				}
+				await _homestayImageRepository.SaveChangesAsync();
+
+				// Update homestay image exists
+
+				foreach (var updateImage in updateHomestayImages.UpdateExistingImages)
+				{
+					var existingImage = existingImages.FirstOrDefault(img => img.Id == updateImage.ImageId);
+
+					// If image not found, skip to next
+					if (existingImage == null) continue;
+					// Map updated fields from DTO to entity
+					_mapper.Map(updateImage, existingImage);
+					_homestayImageRepository.Update(existingImage);
+				}
+				await _homestayImageRepository.SaveChangesAsync();
+
+				await _unitOfWork.CommitTransactionAsync();
+				_logger.LogInformation("Homestay images for Homestay ID {HomestayId} updated successfully.", homestayId);
+				return true;
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error occurred during homestay images update. Initiating rollback.");
+				// Rollback uploaded images in Cloudinary
+				foreach (var publicId in uploadedPublicIds)
+				{
+					var deleteResult = await _cloudinaryService.DeleteImageAsync(publicId);
+					if (!deleteResult.Success)
+					{
+						_logger.LogWarning("Failed to delete image with PublicId {PublicId} during rollback.", publicId);
+					}
+				}
+				throw;
+			}
+		}
+
+		public async Task<HomestayDto?> UpdateAsync(int homestayId, int owerId, UpdateHomestayDto request)
+		{
+			// check ower exist
+			var existingOwner = await _userManager.FindByIdAsync(owerId.ToString());
+			if (existingOwner == null)
+			{
+				_logger.LogWarning("Owner with ID {OwnerId} not found.", owerId);
+				throw new NotFoundException($"Owner with ID {owerId} not found.");
+			}
+
+			// Check role of user is "Host" and "Admin"
+			var roles = await _userManager.GetRolesAsync(existingOwner);
+			if (!roles.Contains("Host") && !roles.Contains("Admin"))
+			{
+				_logger.LogWarning("User with ID {OwnerId} does not have the 'Host' or 'Admin' role.", owerId);
+				throw new BadRequestException($"User with ID {owerId} does not have the 'Host' or 'Admin' role.");
+			}
+
+			// if not Admin, check owerId is the homestay's owner
+			if (!roles.Contains("Admin"))
+			{
+				var homestay = await _homestayRepository.GetByIdAsync(homestayId);
+				if (homestay == null)
+				{
+					_logger.LogWarning("Homestay with ID {HomestayId} not found.", homestayId);
+					throw new NotFoundException($"Homestay with ID {homestayId} not found.");
+				}
+				if (homestay.OwnerId != existingOwner.Id)
+				{
+					_logger.LogWarning("User with ID {OwnerId} does not have permission to update this homestay.", owerId);
+					throw new BadRequestException($"User with ID {owerId} does not have permission to update this homestay.");
+				}
+			}
+
+			var homestayToUpdate = await _homestayRepository.GetByIdAsync(homestayId);
+			if (homestayToUpdate == null)
+			{
+				_logger.LogWarning("Homestay with ID {HomestayId} not found.", homestayId);
+				throw new NotFoundException($"Homestay with ID {homestayId} not found.");
+			}
+
+			if (request.PropertyTypeId.HasValue)
+			{
+				var existingPropertyType = await _propertyTypeRepository.GetByIdAsync(request.PropertyTypeId.Value);
+				if (existingPropertyType == null)
+				{
+					_logger.LogWarning("Property type with ID {PropertyTypeId} not found.", request.PropertyTypeId);
+					throw new NotFoundException($"Property type with ID {request.PropertyTypeId} not found.");
+				}
+				homestayToUpdate.PropertyTypeId = request.PropertyTypeId.Value;
+			}
+
+			// Map updated fields from DTO to entity
+			_mapper.Map(request, homestayToUpdate);
+			homestayToUpdate.UpdatedAt = DateTime.UtcNow;
+			homestayToUpdate.UpdatedBy = existingOwner.Id.ToString();
+			_homestayRepository.Update(homestayToUpdate);
+			await _homestayRepository.SaveChangesAsync();
+
+			return _mapper.Map<HomestayDto>(homestayToUpdate);
 		}
 
 		public async Task<PagedResult<HomestayDto>> GetAllHomestayAsync(HomestayFilter filter)

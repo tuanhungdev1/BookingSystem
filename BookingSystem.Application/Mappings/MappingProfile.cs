@@ -54,7 +54,7 @@ namespace BookingSystem.Application.Mappings
 		public void ConfigureHomestayImageMappings()
 		{
 			CreateMap<CreateHomestayImageDto, HomestayImage>();
-			
+			CreateMap<ImageMetadataDto, HomestayImage>();
 		}
 	}
 }
