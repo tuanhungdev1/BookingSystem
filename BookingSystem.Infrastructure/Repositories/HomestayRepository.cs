@@ -13,7 +13,7 @@ namespace BookingSystem.Infrastructure.Repositories
 		{
 		}
 
-		public async Task<PagedResult<Homestay>> GetPagedAsync(HomestayFilter filter)
+		public async Task<PagedResult<Homestay>> GetAllHomestayAsync(HomestayFilter filter)
 		{
 			var query = _dbSet.AsQueryable();
 

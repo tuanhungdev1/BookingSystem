@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using BookingSystem.Application.DTOs.AccommodationDTO;
 using BookingSystem.Application.DTOs.AccommodationDTO.BookingSystem.Application.DTOs;
+using BookingSystem.Application.DTOs.HomestayImageDTO;
 using BookingSystem.Application.DTOs.HostProfileDTO;
 using BookingSystem.Application.DTOs.PropertyTypeDTO;
 using BookingSystem.Application.DTOs.UserDTO;
@@ -17,6 +18,7 @@ namespace BookingSystem.Application.Mappings
 			ConfigureHomestayMappings();
 			ConfigurePropertyTypeMappings();
 			ConfigureHostProfileMappings();
+			ConfigureHomestayImageMappings();
 		}
 
 		private void ConfigureUserMappings()
@@ -47,6 +49,12 @@ namespace BookingSystem.Application.Mappings
 			CreateMap<CreateHostProfileDto, HostProfile>();
 			CreateMap<UpdateHostProfileDto, HostProfile>();
 			CreateMap<HostProfile, HostProfileDto>();
+		}
+
+		public void ConfigureHomestayImageMappings()
+		{
+			CreateMap<CreateHomestayImageDto, HomestayImage>();
+			
 		}
 	}
 }

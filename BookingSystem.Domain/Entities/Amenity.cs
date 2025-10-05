@@ -11,7 +11,7 @@ namespace BookingSystem.Domain.Entities
 		public string? IconUrl { get; set; }
 
 		public string Category { get; set; } = string.Empty;
-
+		public bool IsCommon { get; set; } = true; // true = phổ biến, false = ít dùng
 		public int UsageCount { get; set; } = 0;
 
 		public bool IsActive { get; set; } = true;

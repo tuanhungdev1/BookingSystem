@@ -16,6 +16,10 @@ namespace BookingSystem.Infrastructure.DI
 			services.AddScoped<IPropertyTypeRepository, PropertyTypeRepository>();
 			services.AddScoped<IAmenityRepository, AmenityRepository>();
 			services.AddScoped<IHostProfileRepository, HostProfileRepository>();
+			services.AddScoped<IHomestayImageRepository, HomestayImageRepository>();
+			services.AddScoped<IHomestayAmenityRepository, HomestayAmenityRepository>();
+			services.AddScoped<IRuleRepository, RuleRepository>();
+			services.AddScoped<IHomestayRuleRepository, HomestayRuleRepository>();
 			return services;
 		}
 	}

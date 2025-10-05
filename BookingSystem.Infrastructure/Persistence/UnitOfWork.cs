@@ -18,6 +18,10 @@ namespace BookingSystem.Infrastructure.Persistence
 		private readonly Lazy<IHomestayRepository> _homestayRepository;
 		private readonly Lazy<IPropertyTypeRepository> _propertyTypeRepository;
 		private readonly Lazy<IHostProfileRepository> _hostProfileRepository;
+		private readonly Lazy<IHomestayImageRepository> _homestayImageRepository;
+		private readonly Lazy<IHomestayAmenityRepository> _homestayAmenityRepository;
+		private readonly Lazy<IRuleRepository> _ruleRepository;
+		private readonly Lazy<IHomestayRuleRepository> _homestayRuleRepository;
 
 		public UnitOfWork(BookingDbContext context)
 		{
@@ -27,6 +31,10 @@ namespace BookingSystem.Infrastructure.Persistence
 			_homestayRepository = new Lazy<IHomestayRepository>(() => new HomestayRepository(_context));
 			_propertyTypeRepository = new Lazy<IPropertyTypeRepository>(() => new PropertyTypeRepository(_context));
 			_hostProfileRepository = new Lazy<IHostProfileRepository>(() => new HostProfileRepository(_context));
+			_homestayImageRepository = new Lazy<IHomestayImageRepository>(() => new HomestayImageRepository(_context));
+			_homestayAmenityRepository = new Lazy<IHomestayAmenityRepository>(() => new HomestayAmenityRepository(_context));
+			_ruleRepository = new Lazy<IRuleRepository>(() => new RuleRepository(_context));
+			_homestayRuleRepository = new Lazy<IHomestayRuleRepository>(() => new HomestayRuleRepository(_context));
 		}
 
 		public IUserRepository UserRepository => _userRepository.Value;
@@ -34,6 +42,10 @@ namespace BookingSystem.Infrastructure.Persistence
 		public IHomestayRepository HomestayRepository => _homestayRepository.Value;
 		public IPropertyTypeRepository PropertyTypeRepository => _propertyTypeRepository.Value;
 		public IHostProfileRepository HostProfileRepository => _hostProfileRepository.Value;
+		public IHomestayImageRepository HomestayImageRepository => _homestayImageRepository.Value;
+		public IHomestayAmenityRepository HomestayAmenityRepository => _homestayAmenityRepository.Value;
+		public IRuleRepository RuleRepository => _ruleRepository.Value;
+		public IHomestayRuleRepository HomestayRuleRepository => _homestayRuleRepository.Value;
 
 		public async Task BeginTransactionAsync()
 		{
