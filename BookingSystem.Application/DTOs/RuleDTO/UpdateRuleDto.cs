@@ -1,0 +1,31 @@
+﻿using BookingSystem.Application.Models.Constants;
+using Microsoft.AspNetCore.Http;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace BookingSystem.Application.DTOs.RuleDTO
+{
+	public class UpdateRuleDto
+	{
+		[MaxLength(100, ErrorMessage = "Rule name cannot exceed 100 characters")]
+		public string? RuleName { get; set; }
+
+		[MaxLength(500, ErrorMessage = "Rule description cannot exceed 500 characters")]
+		public string? RuleDescription { get; set; }
+
+		public IFormFile? IconFile { get; set; }
+		public ImageAction ImageAction { get; set; } = ImageAction.Keep;
+
+		[RegularExpression("^(Allowed|NotAllowed|Required)$", ErrorMessage = "Rule type must be Allowed, NotAllowed, or Required")]
+		public string? RuleType { get; set; }
+
+		public bool? IsActive { get; set; }
+
+		[Range(0, int.MaxValue, ErrorMessage = "Display order must be a non-negative number")]
+		public int? DisplayOrder { get; set; }
+	}
+}

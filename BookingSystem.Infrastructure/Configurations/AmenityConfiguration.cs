@@ -25,9 +25,6 @@ namespace BookingSystem.Infrastructure.Configurations
 				.IsRequired()
 				.HasMaxLength(50);
 
-			builder.Property(a => a.IsPopular)
-				.HasDefaultValue(false);
-
 			builder.Property(a => a.IsActive)
 				.HasDefaultValue(true);
 
@@ -36,7 +33,6 @@ namespace BookingSystem.Infrastructure.Configurations
 
 			// Indexes
 			builder.HasIndex(a => a.Category);
-			builder.HasIndex(a => new { a.IsActive, a.IsPopular });
 			builder.HasIndex(a => new { a.Category, a.DisplayOrder });
 
 			// Query Filters

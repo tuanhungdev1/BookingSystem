@@ -19,16 +19,9 @@ namespace BookingSystem.Infrastructure.Configurations
 				   .HasForeignKey<HostProfile>(h => h.UserId)
 				   .OnDelete(DeleteBehavior.Cascade);
 
-			// Verification info
-			builder.Property(h => h.VerificationDocumentUrl)
-				   .HasMaxLength(500);
-
 			// Business info
 			builder.Property(h => h.BusinessName)
 				   .HasMaxLength(200);
-
-			builder.Property(h => h.BusinessLicense)
-				   .HasMaxLength(100);
 
 			builder.Property(h => h.TaxCode)
 				   .HasMaxLength(50);
@@ -55,7 +48,6 @@ namespace BookingSystem.Infrastructure.Configurations
 				   .HasColumnType("decimal(3,2)"); // Ví dụ: 4.75
 
 			// Default values
-			builder.Property(h => h.IsVerified).HasDefaultValue(false);
 			builder.Property(h => h.IsActive).HasDefaultValue(true);
 			builder.Property(h => h.IsSuperhost).HasDefaultValue(false);
 			builder.Property(h => h.TotalHomestays).HasDefaultValue(0);

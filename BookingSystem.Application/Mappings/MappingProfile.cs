@@ -4,6 +4,7 @@ using BookingSystem.Application.DTOs.AccommodationDTO.BookingSystem.Application.
 using BookingSystem.Application.DTOs.HomestayImageDTO;
 using BookingSystem.Application.DTOs.HostProfileDTO;
 using BookingSystem.Application.DTOs.PropertyTypeDTO;
+using BookingSystem.Application.DTOs.RuleDTO;
 using BookingSystem.Application.DTOs.UserDTO;
 using BookingSystem.Application.Models.Responses;
 using BookingSystem.Domain.Entities;
@@ -19,6 +20,7 @@ namespace BookingSystem.Application.Mappings
 			ConfigurePropertyTypeMappings();
 			ConfigureHostProfileMappings();
 			ConfigureHomestayImageMappings();
+			ConfigureRuleMapping();
 		}
 
 		private void ConfigureUserMappings()
@@ -55,6 +57,15 @@ namespace BookingSystem.Application.Mappings
 		{
 			CreateMap<CreateHomestayImageDto, HomestayImage>();
 			CreateMap<ImageMetadataDto, HomestayImage>();
+		}
+
+		public void ConfigureRuleMapping()
+		{
+			CreateMap<CreateRuleDto, Rule>();
+
+			CreateMap<UpdateRuleDto, Rule>();
+
+			CreateMap<Rule, RuleDto>();
 		}
 	}
 }

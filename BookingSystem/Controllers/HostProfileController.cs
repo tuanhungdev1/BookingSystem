@@ -107,10 +107,9 @@ namespace BookingSystem.Controllers
 		[Authorize(Roles = "Host")]
 		public async Task<ActionResult<ApiResponse<object>>> UploadIdentityCard(
 			int hostId,
-			[FromForm] IFormFile frontFile,
-			[FromForm] IFormFile backFile)
+			[FromForm] UploadIdentityCardDto dto)
 		{
-			var message = await _hostProfileService.UploadIdentityCardAsync(hostId, frontFile, backFile);
+			var message = await _hostProfileService.UploadIdentityCardAsync(hostId, dto);
 			return Ok(new ApiResponse<object>
 			{
 				Success = true,
@@ -125,9 +124,9 @@ namespace BookingSystem.Controllers
 		[Authorize(Roles = "Host")]
 		public async Task<ActionResult<ApiResponse<object>>> UploadBusinessLicense(
 			int hostId,
-			[FromForm] IFormFile file)
+			UploadBusinessLicenseDto licenseDto)
 		{
-			var message = await _hostProfileService.UploadBusinessLicenseAsync(hostId, file);
+			var message = await _hostProfileService.UploadBusinessLicenseAsync(hostId, licenseDto);
 			return Ok(new ApiResponse<object>
 			{
 				Success = true,
@@ -142,9 +141,9 @@ namespace BookingSystem.Controllers
 		[Authorize(Roles = "Host")]
 		public async Task<ActionResult<ApiResponse<object>>> UploadTaxCodeDocument(
 			int hostId,
-			[FromForm] IFormFile file)
+			UploadTaxCodeDocumentDto documentDto)
 		{
-			var message = await _hostProfileService.UploadTaxCodeDocumentAsync(hostId, file);
+			var message = await _hostProfileService.UploadTaxCodeDocumentAsync(hostId, documentDto);
 			return Ok(new ApiResponse<object>
 			{
 				Success = true,

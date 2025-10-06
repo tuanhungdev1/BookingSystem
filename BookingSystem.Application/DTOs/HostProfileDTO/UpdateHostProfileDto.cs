@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-
-namespace BookingSystem.Application.DTOs.HostProfileDTO
+﻿namespace BookingSystem.Application.DTOs.HostProfileDTO
 {
 	public class UpdateHostProfileDto
 	{

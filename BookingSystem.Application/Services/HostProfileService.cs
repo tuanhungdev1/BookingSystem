@@ -87,7 +87,7 @@ namespace BookingSystem.Application.Services
 			};
 		}
 
-		public async Task<string> UploadTaxCodeDocumentAsync(int hostId, IFormFile file)
+		public async Task<string> UploadTaxCodeDocumentAsync(int hostId, UploadTaxCodeDocumentDto documentDto)
 		{
 			var hostProfile = await _hostProfileRepository.GetByIdAsync(hostId);
 			if (hostProfile == null)
@@ -100,7 +100,7 @@ namespace BookingSystem.Application.Services
 				var uploadResult = await _cloudinaryService.UploadImageAsync(
 					new ImageUploadDto
 					{
-						File = file,
+						File = documentDto.File,
 						Folder = $"{FolderImages.Lisenses}/{hostProfile.Id}"
 					}
 				);
@@ -123,7 +123,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<string> UploadBusinessLicenseAsync(int hostId, IFormFile file)
+		public async Task<string> UploadBusinessLicenseAsync(int hostId, UploadBusinessLicenseDto licenseDto)
 		{
 			var hostProfile = await _hostProfileRepository.GetByIdAsync(hostId);
 			if (hostProfile == null)
@@ -136,7 +136,7 @@ namespace BookingSystem.Application.Services
 				var uploadResult = await _cloudinaryService.UploadImageAsync(
 					new ImageUploadDto
 					{
-						File = file,
+						File = licenseDto.File,
 						Folder = $"{FolderImages.Lisenses}/{hostProfile.Id}"
 					}
 				);
@@ -159,7 +159,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<string> UploadIdentityCardAsync(int hostId, IFormFile frontFile, IFormFile backFile)
+		public async Task<string> UploadIdentityCardAsync(int hostId, UploadIdentityCardDto dto)
 		{
 			var hostProfile = await _hostProfileRepository.GetByIdAsync(hostId);
 			if (hostProfile == null)
@@ -174,7 +174,7 @@ namespace BookingSystem.Application.Services
 				var frontUploadResult = await _cloudinaryService.UploadImageAsync(
 					new ImageUploadDto
 					{
-						File = frontFile,
+						File = dto.FrontImage,
 						Folder = $"{FolderImages.Hosts}/{hostProfile.Id}"
 					}
 				);
@@ -190,7 +190,7 @@ namespace BookingSystem.Application.Services
 				var backUploadResult = await _cloudinaryService.UploadImageAsync(
 					new ImageUploadDto
 					{
-						File = backFile,
+						File = dto.BackImage,
 						Folder = $"{FolderImages.Hosts}/{hostProfile.Id}"
 					}
 				);

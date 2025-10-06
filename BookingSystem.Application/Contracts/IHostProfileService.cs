@@ -19,8 +19,8 @@ namespace BookingSystem.Application.Contracts
 		Task<bool> ToggleActiveStatusAsync(int hostProfileId, int adminId, bool isActive);
 		Task UpdateStatisticsAsync(int hostProfileId, int totalHomestays, int totalBookings, decimal averageRating, int responseRate, TimeSpan? avgResponseTime);
 		// Document Upload
-		Task<string> UploadIdentityCardAsync(int hostId, IFormFile frontFile, IFormFile backFile);
-		Task<string> UploadBusinessLicenseAsync(int hostId, IFormFile file);
-		Task<string> UploadTaxCodeDocumentAsync(int hostId, IFormFile file);
+		Task<string> UploadIdentityCardAsync(int hostId, UploadIdentityCardDto dto);
+		Task<string> UploadBusinessLicenseAsync(int hostId, UploadBusinessLicenseDto licenseDto);
+		Task<string> UploadTaxCodeDocumentAsync(int hostId, UploadTaxCodeDocumentDto documentDto);
 	}
 }

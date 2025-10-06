@@ -4,11 +4,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using BookingSystem.Domain.Base;
+using BookingSystem.Domain.Base.Filter;
 using BookingSystem.Domain.Entities;
 
 namespace BookingSystem.Domain.Repositories
 {
     public interface IRuleRepository : IRepository<Rule>
 	{
-    }
+		Task<PagedResult<Rule>> GetAllRulesAsync(RuleFilter filter);
+		Task<IEnumerable<Rule>> GetActiveRulesAsync();
+		Task<Rule?> GetByRuleNameAsync(string ruleName);
+		Task<IEnumerable<Rule>> GetByRuleTypeAsync(string ruleType);
+	}
 }
