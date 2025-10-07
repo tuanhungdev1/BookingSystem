@@ -20,6 +20,8 @@ namespace BookingSystem.Infrastructure.DI
 			services.AddScoped<IHomestayAmenityRepository, HomestayAmenityRepository>();
 			services.AddScoped<IRuleRepository, RuleRepository>();
 			services.AddScoped<IHomestayRuleRepository, HomestayRuleRepository>();
+			services.AddScoped<IAvailabilityCalendarRepository, AvailabilityCalendarRepository>();
+			services.AddScoped<IWishlistItemRepository, WishlistItemRepository>();
 			return services;
 		}
 	}

@@ -17,6 +17,11 @@ namespace BookingSystem.Application.DI
 			services.AddScoped<IPropertyTypeService, PropertyTypeService>();
 			services.AddScoped<IHostProfileService, HostProfileService>();
 			services.AddScoped<IRuleService, RuleService>();
+			services.AddScoped<IWishlistItemService, WishlistItemService>();
+			services.AddScoped<IAmenityService, AmenityService>();
+			services.AddScoped<IHomestayService, HomestayService>();
+			services.AddScoped<IAvailabilityCalendarService, AvailabilityCalendarService>();
+
 			return services;
 		}
 	}

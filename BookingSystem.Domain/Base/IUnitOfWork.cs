@@ -13,6 +13,9 @@ namespace BookingSystem.Domain.Base
 		public IHomestayAmenityRepository HomestayAmenityRepository { get; }
 		public IRuleRepository RuleRepository { get; }
 		public IHomestayRuleRepository HomestayRuleRepository { get; }
+		public IAvailabilityCalendarRepository AvailabilityCalendarRepository { get; }
+		public IWishlistItemRepository WishlistItemRepository { get; }
+
 
 		Task SaveChangesAsync();
 		Task BeginTransactionAsync();

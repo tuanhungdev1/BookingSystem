@@ -1,0 +1,35 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace BookingSystem.Application.DTOs.AvailabilityCalendarDTO
+{
+	public class BulkCreateAvailabilityCalendarDto
+	{
+		[Required(ErrorMessage = "Homestay ID is required")]
+		public int HomestayId { get; set; }
+
+		[Required(ErrorMessage = "Start date is required")]
+		public DateOnly StartDate { get; set; }
+
+		[Required(ErrorMessage = "End date is required")]
+		public DateOnly EndDate { get; set; }
+
+		public bool IsAvailable { get; set; } = true;
+
+		[Range(0, double.MaxValue, ErrorMessage = "Custom price must be non-negative")]
+		public decimal? CustomPrice { get; set; }
+
+		[Range(1, 365, ErrorMessage = "Minimum nights must be between 1 and 365")]
+		public int? MinimumNights { get; set; }
+
+		public bool IsBlocked { get; set; } = false;
+
+		[MaxLength(500, ErrorMessage = "Block reason cannot exceed 500 characters")]
+		public string? BlockReason { get; set; }
+	}
+
+}
