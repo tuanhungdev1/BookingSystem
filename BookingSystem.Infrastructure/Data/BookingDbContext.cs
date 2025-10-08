@@ -27,6 +27,9 @@ namespace BookingSystem.Infrastructure.Data
 		public DbSet<WishlistItem> WishlistItems { get; set; }
 		public DbSet<AvailabilityCalendar> AvailabilityCalendars { get; set; }
 		public DbSet<UserPreference> UserPreferences { get; set; }
+		public DbSet<Coupon> Coupons { get; set; }
+		public DbSet<CouponUsage> CouponUsages { get; set; }
+		public DbSet<CouponHomestay> CouponHomestays { get; set; }
 
 		protected override void OnModelCreating(ModelBuilder builder)
 		{

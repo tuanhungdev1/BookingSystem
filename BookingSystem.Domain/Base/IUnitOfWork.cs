@@ -15,6 +15,9 @@ namespace BookingSystem.Domain.Base
 		public IHomestayRuleRepository HomestayRuleRepository { get; }
 		public IAvailabilityCalendarRepository AvailabilityCalendarRepository { get; }
 		public IWishlistItemRepository WishlistItemRepository { get; }
+		public IBookingRepository BookingRepository { get; }
+		public IReviewRepository ReviewRepository { get; }
+		public ICouponRepository CouponRepository { get; }
 
 
 		Task SaveChangesAsync();

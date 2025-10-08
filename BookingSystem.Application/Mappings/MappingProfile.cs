@@ -6,6 +6,7 @@ using BookingSystem.Application.DTOs.HomestayImageDTO;
 using BookingSystem.Application.DTOs.HostProfileDTO;
 using BookingSystem.Application.DTOs.PaymentDTO;
 using BookingSystem.Application.DTOs.PropertyTypeDTO;
+using BookingSystem.Application.DTOs.ReviewDTO;
 using BookingSystem.Application.DTOs.RuleDTO;
 using BookingSystem.Application.DTOs.UserDTO;
 using BookingSystem.Application.Models.Responses;
@@ -25,6 +26,7 @@ namespace BookingSystem.Application.Mappings
 			ConfigureHomestayImageMappings();
 			ConfigureRuleMapping();
 			ConfigureBookingMapping();
+			ConfigureReviewMapping();
 		}
 
 		private void ConfigureUserMappings()
@@ -70,6 +72,21 @@ namespace BookingSystem.Application.Mappings
 			CreateMap<UpdateRuleDto, Rule>();
 
 			CreateMap<Rule, RuleDto>();
+		}
+
+		public void ConfigureReviewMapping()
+		{
+			CreateMap<Review, ReviewDto>()
+				.ForMember(dest => dest.ReviewerName,
+					opt => opt.MapFrom(src => src.Reviewer.FullName))
+				.ForMember(dest => dest.ReviewerAvatar,
+					opt => opt.MapFrom(src => src.Reviewer.Avatar))
+				.ForMember(dest => dest.RevieweeName,
+					opt => opt.MapFrom(src => src.Reviewee.FullName))
+				.ForMember(dest => dest.HomestayTitle,
+					opt => opt.MapFrom(src => src.Homestay.HomestayTitle));
+
+			CreateMap<CreateReviewDto, Review>();
 		}
 
 		public void ConfigureBookingMapping()

@@ -24,6 +24,9 @@ namespace BookingSystem.Infrastructure.Persistence
 		private readonly Lazy<IHomestayRuleRepository> _homestayRuleRepository;
 		private readonly Lazy<IWishlistItemRepository> _wishlistItemRepository;
 		private readonly Lazy<IAvailabilityCalendarRepository> _availabilityCalendarRepository;
+		private readonly Lazy<IBookingRepository> _bookingRepository;
+		private readonly Lazy<IReviewRepository> _reviewRepository;
+		private readonly Lazy<ICouponRepository> _couponRepository;
 
 		public UnitOfWork(BookingDbContext context)
 		{
@@ -39,6 +42,9 @@ namespace BookingSystem.Infrastructure.Persistence
 			_homestayRuleRepository = new Lazy<IHomestayRuleRepository>(() => new HomestayRuleRepository(_context));
 			_wishlistItemRepository = new Lazy<IWishlistItemRepository>(() => new WishlistItemRepository(_context));
 			_availabilityCalendarRepository = new Lazy<IAvailabilityCalendarRepository>(() => new AvailabilityCalendarRepository(_context));
+			_bookingRepository = new Lazy<IBookingRepository>(() => new BookingRepository(_context));
+			_reviewRepository = new Lazy<IReviewRepository>(() => new ReviewRepository(_context));
+			_couponRepository = new Lazy<ICouponRepository>(() => new CouponRepository(_context));
 		}
 
 		public IUserRepository UserRepository => _userRepository.Value;
@@ -52,6 +58,9 @@ namespace BookingSystem.Infrastructure.Persistence
 		public IHomestayRuleRepository HomestayRuleRepository => _homestayRuleRepository.Value;
 		public IWishlistItemRepository WishlistItemRepository => _wishlistItemRepository.Value;
 		public IAvailabilityCalendarRepository AvailabilityCalendarRepository => _availabilityCalendarRepository.Value;
+		public IBookingRepository BookingRepository => _bookingRepository.Value;
+		public IReviewRepository ReviewRepository => _reviewRepository.Value;
+		public ICouponRepository CouponRepository => _couponRepository.Value;
 
 		public async Task BeginTransactionAsync()
 		{

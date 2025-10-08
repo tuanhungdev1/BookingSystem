@@ -9,13 +9,6 @@ using BookingSystem.Domain.Exceptions;
 using BookingSystem.Domain.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Org.BouncyCastle.Crypto.Engines.SM2Engine;
 
 namespace BookingSystem.Application.Services
 {
