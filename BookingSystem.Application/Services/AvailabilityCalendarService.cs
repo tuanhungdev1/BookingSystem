@@ -8,11 +8,6 @@ using BookingSystem.Domain.Exceptions;
 using BookingSystem.Domain.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BookingSystem.Application.Services
 {

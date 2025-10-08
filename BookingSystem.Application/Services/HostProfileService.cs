@@ -10,7 +10,6 @@ using BookingSystem.Domain.Exceptions;
 using BookingSystem.Domain.Enums;
 using BookingSystem.Application.DTOs.ImageDTO;
 using BookingSystem.Application.Models.Constants;
-using Microsoft.AspNetCore.Http;
 using BookingSystem.Domain.Base.Filter;
 
 namespace BookingSystem.Application.Services

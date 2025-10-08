@@ -21,6 +21,7 @@ namespace BookingSystem.Application.DI
 			services.AddScoped<IAmenityService, AmenityService>();
 			services.AddScoped<IHomestayService, HomestayService>();
 			services.AddScoped<IAvailabilityCalendarService, AvailabilityCalendarService>();
+			services.AddScoped<IBookingService, BookingService>();
 
 			return services;
 		}

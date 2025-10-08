@@ -1,11 +1,6 @@
 ﻿using BookingSystem.Application.DTOs.RuleDTO;
 using BookingSystem.Domain.Base.Filter;
 using BookingSystem.Domain.Base;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BookingSystem.Application.Contracts
 {

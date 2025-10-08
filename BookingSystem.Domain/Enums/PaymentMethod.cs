@@ -2,13 +2,15 @@
 {
 	public enum PaymentMethod
 	{
-		CreditCard = 0,
-		DebitCard = 1,
-		VNPay = 2,
-		Momo = 3,
-		ZaloPay = 4,
-		BankTransfer = 5,
-		PayPal = 6,
-		Cash = 7
+		Cash = 0,              // Tiền mặt
+		CreditCard = 1,        // Thẻ tín dụng
+		DebitCard = 2,         // Thẻ ghi nợ
+		BankTransfer = 3,      // Chuyển khoản
+		EWallet = 4,           // Ví điện tử
+		PayPal = 5,            // PayPal
+		Stripe = 6,            // Stripe
+		VNPay = 7,             // VNPay
+		Momo = 8,              // Momo
+		ZaloPay = 9            // ZaloPay
 	}
 }

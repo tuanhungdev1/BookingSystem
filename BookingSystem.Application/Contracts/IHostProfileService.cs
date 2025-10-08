@@ -1,7 +1,6 @@
 ﻿using BookingSystem.Application.DTOs.HostProfileDTO;
 using BookingSystem.Domain.Base;
 using BookingSystem.Domain.Base.Filter;
-using Microsoft.AspNetCore.Http;
 
 namespace BookingSystem.Application.Contracts
 {
