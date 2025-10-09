@@ -22,5 +22,11 @@ namespace BookingSystem.Domain.Repositories
 		Task<bool> CanUserUseCouponAsync(int couponId, int userId);
 		Task<CouponUsage?> GetCouponUsageByBookingAsync(int bookingId);
 		Task<IEnumerable<CouponUsage>> GetCouponUsageHistoryAsync(int couponId);
+
+		Task<List<CouponUsage>> GetAllCouponUsagesByCouponIdsAsync(List<int> couponIds);
+		Task<List<CouponHomestay>> GetCouponHomestaysByCouponIdAsync(int couponId);
+		Task RemoveCouponHomestaysAsync(List<CouponHomestay> couponHomestays);
+		Task AddCouponHomestaysAsync(List<CouponHomestay> couponHomestays);
+		Task<List<Coupon>> GetExpiredActiveCouponsAsync();
 	}
 }

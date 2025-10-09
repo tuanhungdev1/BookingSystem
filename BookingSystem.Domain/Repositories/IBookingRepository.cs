@@ -28,5 +28,8 @@ namespace BookingSystem.Domain.Repositories
 		Task<bool> CanUserReviewBookingAsync(int userId, int bookingId);
 		Task<IEnumerable<Booking>> GetBookingsByStatusAsync(BookingStatus status, int? homestayId = null);
 		Task<IEnumerable<Booking>> GetExpiredPendingBookingsAsync(int expirationMinutes = 30);
+
+		Task<int> GetUserCompletedBookingsCountAsync(int userId);
+		Task<bool> HasUserCompletedBookingAsync(int userId);
 	}
 }

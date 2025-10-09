@@ -27,6 +27,9 @@ namespace BookingSystem.Infrastructure.Persistence
 		private readonly Lazy<IBookingRepository> _bookingRepository;
 		private readonly Lazy<IReviewRepository> _reviewRepository;
 		private readonly Lazy<ICouponRepository> _couponRepository;
+		private readonly Lazy<ICouponUsageRepository> _couponUsageRepository;
+		private readonly Lazy<ICouponHomestaysRepository> _couponHomestaysRepository;
+		private readonly Lazy<IUserPreferenceRepository> _userPreferenceRepository;
 
 		public UnitOfWork(BookingDbContext context)
 		{
@@ -45,6 +48,9 @@ namespace BookingSystem.Infrastructure.Persistence
 			_bookingRepository = new Lazy<IBookingRepository>(() => new BookingRepository(_context));
 			_reviewRepository = new Lazy<IReviewRepository>(() => new ReviewRepository(_context));
 			_couponRepository = new Lazy<ICouponRepository>(() => new CouponRepository(_context));
+			_couponUsageRepository = new Lazy<ICouponUsageRepository>(() => new CouponUsageRepository(_context));
+			_couponHomestaysRepository = new Lazy<ICouponHomestaysRepository>(() => new CouponHomestaysRepository(_context));
+			_userPreferenceRepository = new Lazy<IUserPreferenceRepository>(() => new UserPreferenceRepository(_context));
 		}
 
 		public IUserRepository UserRepository => _userRepository.Value;
@@ -61,6 +67,9 @@ namespace BookingSystem.Infrastructure.Persistence
 		public IBookingRepository BookingRepository => _bookingRepository.Value;
 		public IReviewRepository ReviewRepository => _reviewRepository.Value;
 		public ICouponRepository CouponRepository => _couponRepository.Value;
+		public ICouponUsageRepository CouponUsageRepository => _couponUsageRepository.Value;
+		public ICouponHomestaysRepository CouponHomestaysRepository => _couponHomestaysRepository.Value;
+		public IUserPreferenceRepository UserPreferenceRepository => _userPreferenceRepository.Value;
 
 		public async Task BeginTransactionAsync()
 		{

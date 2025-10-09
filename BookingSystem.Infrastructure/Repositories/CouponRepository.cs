@@ -14,6 +14,40 @@ namespace BookingSystem.Infrastructure.Repositories
 		{
 		}
 
+		public async Task<List<CouponUsage>> GetAllCouponUsagesByCouponIdsAsync(List<int> couponIds)
+		{
+			return await _context.CouponUsages
+				.Where(cu => couponIds.Contains(cu.CouponId))
+				.ToListAsync();
+		}
+
+		public async Task<List<CouponHomestay>> GetCouponHomestaysByCouponIdAsync(int couponId)
+		{
+			return await _context.CouponHomestays
+				.Where(ch => ch.CouponId == couponId)
+				.ToListAsync();
+		}
+
+		public async Task RemoveCouponHomestaysAsync(List<CouponHomestay> couponHomestays)
+		{
+			_context.CouponHomestays.RemoveRange(couponHomestays);
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task AddCouponHomestaysAsync(List<CouponHomestay> couponHomestays)
+		{
+			await _context.CouponHomestays.AddRangeAsync(couponHomestays);
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task<List<Coupon>> GetExpiredActiveCouponsAsync()
+		{
+			var now = DateTime.UtcNow;
+			return await _dbSet
+				.Where(c => c.IsActive && c.EndDate < now)
+				.ToListAsync();
+		}
+
 		public async Task<Coupon?> GetByCodeAsync(string couponCode)
 		{
 			return await _dbSet
@@ -295,41 +329,6 @@ namespace BookingSystem.Infrastructure.Repositories
 			};
 
 			return query;
-		}
-	}
-
-	public class CouponUsageRepository : Repository<CouponUsage>, ICouponUsageRepository
-	{
-		public CouponUsageRepository(BookingDbContext context) : base(context)
-		{
-		}
-
-		public async Task<IEnumerable<CouponUsage>> GetByUserIdAsync(int userId)
-		{
-			return await _dbSet
-				.Include(cu => cu.Coupon)
-				.Include(cu => cu.Booking)
-				.Where(cu => cu.UserId == userId)
-				.OrderByDescending(cu => cu.UsedAt)
-				.ToListAsync();
-		}
-
-		public async Task<IEnumerable<CouponUsage>> GetByCouponIdAsync(int couponId)
-		{
-			return await _dbSet
-				.Include(cu => cu.User)
-				.Include(cu => cu.Booking)
-				.Where(cu => cu.CouponId == couponId)
-				.OrderByDescending(cu => cu.UsedAt)
-				.ToListAsync();
-		}
-
-		public async Task<CouponUsage?> GetByBookingIdAsync(int bookingId)
-		{
-			return await _dbSet
-				.Include(cu => cu.Coupon)
-				.Include(cu => cu.User)
-				.FirstOrDefaultAsync(cu => cu.BookingId == bookingId);
 		}
 	}
 }

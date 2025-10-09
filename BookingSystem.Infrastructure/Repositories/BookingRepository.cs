@@ -19,6 +19,19 @@ namespace BookingSystem.Infrastructure.Repositories
 		{
 		}
 
+		public async Task<int> GetUserCompletedBookingsCountAsync(int userId)
+		{
+			return await _dbSet
+				.Where(b => b.GuestId == userId && b.BookingStatus == BookingStatus.Completed)
+				.CountAsync();
+		}
+
+		public async Task<bool> HasUserCompletedBookingAsync(int userId)
+		{
+			return await _dbSet
+				.AnyAsync(b => b.GuestId == userId && b.BookingStatus == BookingStatus.Completed);
+		}
+
 		public async Task<Booking?> GetByIdWithDetailsAsync(int id)
 		{
 			return await _dbSet

@@ -25,7 +25,10 @@ namespace BookingSystem.Infrastructure.DI
 			services.AddScoped<IBookingRepository, BookingRepository>();
 			services.AddScoped<IReviewRepository, ReviewRepository>();
 			services.AddScoped<ICouponRepository, CouponRepository>();
-			
+			services.AddScoped<ICouponUsageRepository, CouponUsageRepository>();
+			services.AddScoped<ICouponHomestaysRepository, CouponHomestaysRepository>();
+			services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
+
 
 			return services;
 		}

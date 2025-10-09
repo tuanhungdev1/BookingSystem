@@ -23,6 +23,8 @@ namespace BookingSystem.Application.DI
 			services.AddScoped<IAvailabilityCalendarService, AvailabilityCalendarService>();
 			services.AddScoped<IBookingService, BookingService>();
 			services.AddScoped<IReviewService, ReviewService>();
+			services.AddScoped<ICouponService , CouponService>();
+			services.AddScoped<IUserPreferenceService, UserPreferenceService>();
 
 			return services;
 		}
