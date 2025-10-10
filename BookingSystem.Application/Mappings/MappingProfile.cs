@@ -9,6 +9,7 @@ using BookingSystem.Application.DTOs.PropertyTypeDTO;
 using BookingSystem.Application.DTOs.ReviewDTO;
 using BookingSystem.Application.DTOs.RuleDTO;
 using BookingSystem.Application.DTOs.UserDTO;
+using BookingSystem.Application.DTOs.UserPreferenceDTO;
 using BookingSystem.Application.Models.Responses;
 using BookingSystem.Domain.Entities;
 using BookingSystem.Domain.Enums;
@@ -27,6 +28,7 @@ namespace BookingSystem.Application.Mappings
 			ConfigureRuleMapping();
 			ConfigureBookingMapping();
 			ConfigureReviewMapping();
+			ConfigureUserPreferenceMapping();
 		}
 
 		private void ConfigureUserMappings()
@@ -72,6 +74,12 @@ namespace BookingSystem.Application.Mappings
 			CreateMap<UpdateRuleDto, Rule>();
 
 			CreateMap<Rule, RuleDto>();
+		}
+
+		public void ConfigureUserPreferenceMapping()
+		{
+			CreateMap<UserPreference, UserPreferenceDto>();
+			CreateMap<CreateUserPreferenceDto, UserPreference>();
 		}
 
 		public void ConfigureReviewMapping()

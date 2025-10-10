@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using BookingSystem.Application.Contracts;
 using BookingSystem.Application.Services;
+using BookingSystem.Infrastructure.PaymentGateways;
+using BookingSystem.Application.Factories;
 
 namespace BookingSystem.Application.DI
 {
@@ -25,6 +27,9 @@ namespace BookingSystem.Application.DI
 			services.AddScoped<IReviewService, ReviewService>();
 			services.AddScoped<ICouponService , CouponService>();
 			services.AddScoped<IUserPreferenceService, UserPreferenceService>();
+			services.AddScoped<VNPayService>();
+			services.AddScoped<IPaymentGatewayFactory, PaymentGatewayFactory>();
+			services.AddHttpContextAccessor();
 
 			return services;
 		}

@@ -1,0 +1,27 @@
+﻿using BookingSystem.Application.DTOs.PaymentDTO;
+using BookingSystem.Domain.Enums;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace BookingSystem.Application.Contracts
+{
+	public interface IPaymentService
+	{
+		// Online payment methods
+		Task<PaymentUrlResponseDto> CreateOnlinePaymentAsync(int userId, CreateOnlinePaymentDto request);
+		Task<PaymentDto> ProcessPaymentCallbackAsync(PaymentMethod paymentMethod, Dictionary<string, string> callbackData);
+
+		// Manual payment methods
+		Task<PaymentDto> CreatePaymentAsync(int userId, CreatePaymentDto request);
+		Task<PaymentDto> ProcessPaymentAsync(ProcessPaymentDto request);
+
+		// Common methods
+		Task<PaymentDto> RefundPaymentAsync(int paymentId, int userId, RefundPaymentDto request);
+		Task<PaymentDto?> GetByIdAsync(int paymentId);
+		Task<IEnumerable<PaymentDto>> GetByBookingIdAsync(int bookingId);
+		Task<bool> MarkPaymentAsFailedAsync(int paymentId, string failureReason);
+	}
+}

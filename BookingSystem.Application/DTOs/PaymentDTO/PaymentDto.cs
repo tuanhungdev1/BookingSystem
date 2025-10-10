@@ -18,5 +18,10 @@ namespace BookingSystem.Application.DTOs.PaymentDTO
 		public decimal? RefundAmount { get; set; }
 		public DateTime? RefundedAt { get; set; }
 		public DateTime CreatedAt { get; set; }
+
+		public int BookingId { get; set; }
+
+		// Optional: Booking information
+		public BookingPaymentInfoDto? Booking { get; set; }
 	}
 }

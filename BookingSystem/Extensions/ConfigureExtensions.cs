@@ -10,6 +10,7 @@ namespace BookingSystem.Extensions
 			services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
 			services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
 			services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
+			services.Configure<PaymentGatewaySettings>(configuration.GetSection("PaymentGateway"));
 			return services;
 		}
 	}
