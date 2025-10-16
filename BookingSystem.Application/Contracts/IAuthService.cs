@@ -8,6 +8,7 @@ namespace BookingSystem.Application.Contracts
 	{
 		Task<User> RegisterAsync(RegisterRequest request);
 		Task<(User? user, bool requiresTwoFactor)> LoginAsync(LoginRequest request);
+		Task<User> AdminLoginAsync(LoginRequest loginRequest);
 		Task<User?> RefreshTokenAsync(string refreshToken);
 		Task<bool> LogoutAsync(string userId);
 		Task<bool> ConfirmEmailAsync(string email, string token);

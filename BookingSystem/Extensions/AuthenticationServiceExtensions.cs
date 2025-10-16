@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -18,6 +20,8 @@ namespace BookingSystem.Extensions
 			{
 				options.SaveToken = true;
 				options.RequireHttpsMetadata = false;
+				options.IncludeErrorDetails = true;  // Thêm để debug
+				options.MapInboundClaims = false;
 				options.TokenValidationParameters = new TokenValidationParameters
 				{
 					ValidateIssuer = true,
@@ -36,19 +40,36 @@ namespace BookingSystem.Extensions
 
 				options.Events = new JwtBearerEvents
 				{
+					OnMessageReceived = context => {
+						var token = context.Request.Cookies["accessToken"];
+						var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+						logger.LogDebug("Token from cookie: {Token}", token ?? "NULL");  // Check nếu token null hoặc empty
+						context.Token = token;
+						return Task.CompletedTask;
+					},
 					OnAuthenticationFailed = context =>
 					{
 						var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
 						logger.LogError("Authentication failed: {Error}", context.Exception.Message);
 						return Task.CompletedTask;
 					},
-					OnTokenValidated = context =>
-					{
+					OnTokenValidated = context => {
 						var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-						logger.LogDebug("Token validated for user: {User}", context.Principal?.Identity?.Name);
+						logger.LogDebug("Claims: {Claims}", string.Join(", ", context.Principal.Claims.Select(c => $"{c.Type}={c.Value}")));
 						return Task.CompletedTask;
 					}
 				};
+			});
+
+			// Thêm policy hỗ trợ cả schemes
+			services.AddAuthorization(options =>
+			{
+				var multiSchemePolicy = new AuthorizationPolicyBuilder(
+					IdentityConstants.ApplicationScheme,  // Cookie scheme từ Identity
+					JwtBearerDefaults.AuthenticationScheme)
+					.RequireAuthenticatedUser()
+					.Build();
+				options.DefaultPolicy = multiSchemePolicy;
 			});
 
 			return services;

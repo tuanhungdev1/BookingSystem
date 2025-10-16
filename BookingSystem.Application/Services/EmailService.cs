@@ -27,7 +27,7 @@ namespace BookingSystem.Application.Services
 				var smtpUser = _configuration["Email:SmtpUser"];
 				var smtpPass = _configuration["Email:SmtpPassword"];
 				var fromEmail = _configuration["Email:FromEmail"];
-				var fromName = _configuration["Email:FromName"] ?? "Booking.vn";
+				var fromName = _configuration["Email:FromName"] ?? "NextStay.vn";
 
 				using var client = new SmtpClient(smtpHost, smtpPort);
 				client.UseDefaultCredentials = false;
@@ -63,15 +63,15 @@ namespace BookingSystem.Application.Services
 
 		public async Task<bool> SendEmailConfirmationAsync(string email, string confirmationLink)
 		{
-			var subject = "Confirm Your Email - Booking.vn";
+			var subject = "Confirm Your Email - NextStay.vn";
 			var htmlBody = $@"
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
                     <div style='background-color: #f8f9fa; padding: 20px; text-align: center;'>
-                        <h1 style='color: #28a745; margin: 0;'>Welcome to Booking.vn!</h1>
+                        <h1 style='color: #28a745; margin: 0;'>Welcome to NextStay.vn!</h1>
                     </div>
                     <div style='padding: 30px 20px;'>
                         <h2>Please confirm your email address</h2>
-                        <p>Thank you for registering with Booking.vn. To complete your registration, please click the button below to confirm your email address:</p>
+                        <p>Thank you for registering with NextStay.vn. To complete your registration, please click the button below to confirm your email address:</p>
                         <div style='text-align: center; margin: 30px 0;'>
                             <a href='{confirmationLink}' style='background-color: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>Confirm Email</a>
                         </div>
@@ -80,8 +80,8 @@ namespace BookingSystem.Application.Services
                         <p><small>This link will expire in 24 hours for security reasons.</small></p>
                     </div>
                     <div style='background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666;'>
-                        <p>If you didn't create an account with Booking.vn, please ignore this email.</p>
-                        <p>&copy; 2025 Booking.vn. All rights reserved.</p>
+                        <p>If you didn't create an account with NextStay.vn, please ignore this email.</p>
+                        <p>&copy; 2025 NextStay.vn. All rights reserved.</p>
                     </div>
                 </div>";
 
@@ -90,7 +90,7 @@ namespace BookingSystem.Application.Services
 
 		public async Task<bool> SendPasswordResetAsync(string email, string resetLink)
 		{
-			var subject = "Reset Your Password - Booking.vn";
+			var subject = "Reset Your Password - NextStay.vn";
 			var htmlBody = $@"
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
                     <div style='background-color: #f8f9fa; padding: 20px; text-align: center;'>
@@ -98,7 +98,7 @@ namespace BookingSystem.Application.Services
                     </div>
                     <div style='padding: 30px 20px;'>
                         <h2>Reset Your Password</h2>
-                        <p>We received a request to reset your password for your Booking.vn account. Click the button below to reset it:</p>
+                        <p>We received a request to reset your password for your NextStay.vn account. Click the button below to reset it:</p>
                         <div style='text-align: center; margin: 30px 0;'>
                             <a href='{resetLink}' style='background-color: #dc3545; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>Reset Password</a>
                         </div>
@@ -108,7 +108,7 @@ namespace BookingSystem.Application.Services
                         <p><strong>If you didn't request a password reset, please ignore this email and your password will remain unchanged.</strong></p>
                     </div>
                     <div style='background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666;'>
-                        <p>&copy; 2025 Booking.vn. All rights reserved.</p>
+                        <p>&copy; 2025 NextStay.vn. All rights reserved.</p>
                     </div>
                 </div>";
 
@@ -117,7 +117,7 @@ namespace BookingSystem.Application.Services
 
 		public async Task<bool> Send2FACodeAsync(string email, string code)
 		{
-			var subject = "Your 2FA Code - Booking.vn";
+			var subject = "Your 2FA Code - NextStay.vn";
 			var htmlBody = $@"
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
                     <div style='background-color: #f8f9fa; padding: 20px; text-align: center;'>
@@ -133,7 +133,7 @@ namespace BookingSystem.Application.Services
                         <p><small>If you didn't request this code, please contact support immediately.</small></p>
                     </div>
                     <div style='background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666;'>
-                        <p>&copy; 2025 Booking.vn. All rights reserved.</p>
+                        <p>&copy; 2025 NextStay.vn. All rights reserved.</p>
                     </div>
                 </div>";
 
@@ -142,28 +142,28 @@ namespace BookingSystem.Application.Services
 
 		public async Task<bool> SendWelcomeEmailAsync(string email, string firstName)
 		{
-			var subject = "Welcome to Booking.vn!";
+			var subject = "Welcome to NextStay.vn!";
 			var htmlBody = $@"
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
                     <div style='background-color: #28a745; padding: 30px 20px; text-align: center;'>
-                        <h1 style='color: white; margin: 0;'>Welcome to Booking.vn, {firstName}!</h1>
+                        <h1 style='color: white; margin: 0;'>Welcome to NextStay.vn, {firstName}!</h1>
                     </div>
                     <div style='padding: 30px 20px;'>
                         <h2>You're all set!</h2>
-                        <p>Thank you for joining Booking.vn. Your email has been confirmed and your account is now active.</p>
+                        <p>Thank you for joining NextStay.vn. Your email has been confirmed and your account is now active.</p>
                         <p>Here's what you can do now:</p>
                         <ul>
                             <li>Browse hotels and accommodations in your area</li>
                             <li>Book your first stay</li>
                             <li>Save your favorite destinations</li>
-                            <li>Manage your bookings in real-time</li>
+                            <li>Manage your NextStays in real-time</li>
                         </ul>
                         <div style='text-align: center; margin: 30px 0;'>
-                            <a href='https://booking.vn/hotels' style='background-color: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>Start Booking</a>
+                            <a href='https://NextStay.vn/hotels' style='background-color: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>Start NextStay</a>
                         </div>
                     </div>
                     <div style='background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666;'>
-                        <p>&copy; 2025 Booking.vn. All rights reserved.</p>
+                        <p>&copy; 2025 NextStay.vn. All rights reserved.</p>
                     </div>
                 </div>";
 

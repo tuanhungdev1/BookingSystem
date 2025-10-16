@@ -2,12 +2,8 @@
 {
 	public enum SystemRoles
 	{
-		SuperAdmin,
 		Admin,
-		AccommodationManager,
-		Staff,
-		Customer,
-		Support,
-		Partner
+		Host,
+		User
 	}
 }

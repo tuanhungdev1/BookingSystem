@@ -45,6 +45,38 @@ namespace BookingSystem.Application.Services
 			_mapper = mapper;
 		}
 
+		public async Task<User> AdminLoginAsync(LoginRequest loginRequest)
+		{
+			var existingUser = await _userManager.FindByEmailAsync(loginRequest.Email);
+
+			// Kiểm tra email có tồn tại hay không
+			if (existingUser == null)
+				throw new BadRequestException("Invalid email or password");
+
+			// Kiểm tra xác thực email
+			if (!existingUser.IsEmailConfirmed)
+				throw new BadRequestException("Please confirm your email before logging in");
+
+			// Kiểm tra user có phải là Admin không
+			var roles = await _userManager.GetRolesAsync(existingUser);
+			if (!roles.Contains(SystemRoles.Admin.ToString()))
+				throw new BadRequestException("You do not have admin privileges");
+
+			// Kiểm tra mật khẩu
+			var result = await _signInManager.CheckPasswordSignInAsync(existingUser, loginRequest.Password, lockoutOnFailure: false);
+			if (!result.Succeeded)
+				throw new BadRequestException("Invalid email or password");
+
+			// Cập nhật thời gian đăng nhập cuối
+			existingUser.LastLoginAt = DateTime.UtcNow;
+			// Tạo refresh token
+			existingUser.RefreshToken = GenerateSecureToken();
+			existingUser.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+			await _userManager.UpdateAsync(existingUser);
+
+			return existingUser;
+		}
+
 		public async Task<User?> RegisterAsync(RegisterRequest request)
 		{
 			var existingUser = await _userManager.FindByEmailAsync(request.Email);
@@ -79,7 +111,7 @@ namespace BookingSystem.Application.Services
 				throw new BadRequestException($"Registration failed: {errors}");
 			}
 
-			await _userManager.AddToRoleAsync(user, SystemRoles.SuperAdmin.ToString());
+			await _userManager.AddToRoleAsync(user, SystemRoles.Admin.ToString());
 
 			// Gửi email xác nhận
 			var confirmationLink = $"{_appSettings.ClientUrl}/confirm-email?email={user.Email}&token={user.EmailConfirmationToken}";
@@ -93,10 +125,10 @@ namespace BookingSystem.Application.Services
 		{
 			var user = await _userManager.FindByEmailAsync(request.Email);
 			if (user == null)
-				throw new UnauthorizedAccessException("Invalid email or password");
+				throw new BadRequestException("Invalid email or password");
 
 			if (!user.IsEmailConfirmed)
-				throw new UnauthorizedAccessException("Please confirm your email before logging in");
+				throw new BadRequestException("Please confirm your email before logging in");
 
 			var result = await _signInManager.PasswordSignInAsync(
 						user,
@@ -104,7 +136,7 @@ namespace BookingSystem.Application.Services
 						request.RememberMe,
 						lockoutOnFailure: false);
 			if (!result.Succeeded)
-				throw new UnauthorizedAccessException("Invalid email or password");
+				throw new BadRequestException("Invalid email or password");
 
 			// Kiểm tra 2FA
 			if (user.TwoFactorEnabled)
@@ -152,10 +184,20 @@ namespace BookingSystem.Application.Services
 		public async Task<bool> ConfirmEmailAsync(string email, string token)
 		{
 			var user = await _userManager.FindByEmailAsync(email);
-			if (user == null || user.EmailConfirmationToken != token ||
-				user.EmailConfirmationTokenExpiry < DateTime.UtcNow)
-				return false;
+			if (user == null)
+				throw new NotFoundException("User not found.");
 
+			// Nếu user đã xác thực trước đó
+			if (user.EmailConfirmed || user.IsEmailConfirmed)
+				throw new BadRequestException("Email has already been verified. No further verification is needed.");
+
+			// Nếu token không khớp hoặc hết hạn
+			if (user.EmailConfirmationToken != token ||
+				user.EmailConfirmationTokenExpiry == null ||
+				user.EmailConfirmationTokenExpiry < DateTime.UtcNow)
+				throw new BadRequestException("Invalid or expired verification link.");
+
+			// Đánh dấu đã xác thực
 			user.IsEmailConfirmed = true;
 			user.EmailConfirmed = true; // Identity property
 			user.EmailConfirmationToken = null;
@@ -163,13 +205,15 @@ namespace BookingSystem.Application.Services
 
 			var result = await _userManager.UpdateAsync(user);
 
-			if (result.Succeeded)
+			if (!result.Succeeded)
 			{
-				await _emailService.SendWelcomeEmailAsync(user.Email!, user.FirstName ?? "User");
-				return true;
+				var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+				throw new Exception($"Failed to update user verification status: {errors}");
 			}
 
-			return false;
+			// Gửi email chào mừng
+			await _emailService.SendWelcomeEmailAsync(user.Email!, user.FirstName ?? "User");
+			return true;
 		}
 
 		public async Task<bool> ResendEmailConfirmationAsync(string email)

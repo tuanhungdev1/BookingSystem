@@ -1,10 +1,12 @@
 ﻿using BookingSystem.Application.Contracts;
+using BookingSystem.Application.Models.Common;
 using BookingSystem.Application.Models.Requests.Auth;
 using BookingSystem.Application.Models.Responses;
 using BookingSystem.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 
@@ -17,15 +19,40 @@ namespace BookingSystem.Controllers
 		private readonly IAuthService _authService;
 		private readonly IJwtService _jwtService;
 		private readonly UserManager<User> _userManager;
+		private readonly JwtSettings _jwtSettings;
+		private readonly IWebHostEnvironment _environment;
 
 		public AuthController(
 			IAuthService authService,
+			IOptions<JwtSettings> jwtSettings,
 			IJwtService jwtService,
+			IWebHostEnvironment environment,
 			UserManager<User> userManager)
 		{
 			_authService = authService;
 			_jwtService = jwtService;
 			_userManager = userManager;
+			_jwtSettings = jwtSettings.Value;
+			_environment = environment;
+		}
+
+		[HttpPost("login/admin")]
+		public async Task<ActionResult<ApiResponse<UserProfileDto>>> AdminLogin(LoginRequest request)
+		{
+			var user = await _authService.AdminLoginAsync(request);
+
+			var roles = await _userManager.GetRolesAsync(user);
+			var accessToken = _jwtService.GenerateAccessToken(user, roles);
+
+			SetTokenCookie("accessToken", accessToken, int.Parse(_jwtSettings.AccessTokenExpirationMinutes.ToString()));
+			SetTokenCookie("refreshToken", user.RefreshToken, int.Parse(_jwtSettings.RefreshTokenExpiryDays.ToString()) * 24 * 60);
+
+			return Ok(new ApiResponse<UserProfileDto>
+			{
+				Success = true,
+				Message = "Login successful",
+				Data = await _authService.GetUserInfoAsync(user)
+			});
 		}
 
 		[HttpPost("register")]
@@ -47,35 +74,25 @@ namespace BookingSystem.Controllers
 
 			if (requiresTwoFactor)
 			{
-				return Ok(new ApiResponse<AuthResponse>
+				return Ok(new ApiResponse<UserProfileDto>
 				{
 					Success = true,
 					Message = "2FA code sent to your email",
-					Data = new AuthResponse
-					{
-						RequiresTwoFactor = true,
-						User = await _authService.GetUserInfoAsync(user)
-					}
+					Data = await _authService.GetUserInfoAsync(user)
 				});
 			}
 
 			var roles = await _userManager.GetRolesAsync(user);
 			var accessToken = _jwtService.GenerateAccessToken(user, roles);
 
-			var authResponse = new AuthResponse
-			{
-				AccessToken = accessToken,
-				RefreshToken = user.RefreshToken!,
-				AccessTokenExpires = DateTime.UtcNow.AddMinutes(15),
-				RefreshTokenExpires = user.RefreshTokenExpiryTime.Value,
-				User = await _authService.GetUserInfoAsync(user)
-			};
+			SetTokenCookie("accessToken", accessToken, int.Parse(_jwtSettings.AccessTokenExpirationMinutes.ToString()));
+			SetTokenCookie("refreshToken", user.RefreshToken, int.Parse(_jwtSettings.RefreshTokenExpiryDays.ToString()) * 24 * 60);
 
-			return Ok(new ApiResponse<AuthResponse>
+			return Ok(new ApiResponse<UserProfileDto>
 			{
 				Success = true,
 				Message = "Login successful",
-				Data = authResponse
+				Data = await _authService.GetUserInfoAsync(user)
 			});
 		}
 
@@ -97,19 +114,16 @@ namespace BookingSystem.Controllers
 				var roles = await _userManager.GetRolesAsync(user);
 				var accessToken = _jwtService.GenerateAccessToken(user, roles);
 
-				var authResponse = new AuthResponse
-				{
-					AccessToken = accessToken,
-					RefreshToken = user.RefreshToken!,
-					AccessTokenExpires = DateTime.UtcNow.AddMinutes(15),
-					User = await _authService.GetUserInfoAsync(user)
-				};
 
-				return Ok(new ApiResponse<AuthResponse>
+				SetTokenCookie("accessToken", accessToken, int.Parse(_jwtSettings.AccessTokenExpirationMinutes.ToString()));
+				SetTokenCookie("refreshToken", user.RefreshToken, int.Parse(_jwtSettings.RefreshTokenExpiryDays.ToString()) * 24 * 60);
+
+
+				return Ok(new ApiResponse<UserProfileDto>
 				{
 					Success = true,
 					Message = "2FA verification successful",
-					Data = authResponse
+					Data = await _authService.GetUserInfoAsync(user)
 				});
 			}
 			catch (Exception)
@@ -123,28 +137,46 @@ namespace BookingSystem.Controllers
 		}
 
 		[HttpPost("refresh-token")]
-		public async Task<ActionResult<ApiResponse<AuthResponse>>> RefreshToken(RefreshTokenRequest request)
+		public async Task<ActionResult<ApiResponse<AuthResponse>>> RefreshToken()
 		{
 			try
 			{
-				var user = await _authService.RefreshTokenAsync(request.RefreshToken);
+
+				var refreshToken = Request.Cookies["refreshToken"];
+
+				if (string.IsNullOrEmpty(refreshToken))
+				{
+					return Unauthorized(new ApiResponse<UserProfileDto>
+					{
+						Success = false,
+						Message = "Refresh token not found"
+					});
+				}
+
+				var user = await _authService.RefreshTokenAsync(refreshToken);
+
+				if (user == null)
+				{
+					return Unauthorized(new ApiResponse<UserProfileDto>
+					{
+						Success = false,
+						Message = "Invalid or expired refresh token"
+					});
+				}
+
 				var roles = await _userManager.GetRolesAsync(user);
 				var accessToken = _jwtService.GenerateAccessToken(user, roles);
 
-				var authResponse = new AuthResponse
-				{
-					AccessToken = accessToken,
-					RefreshToken = user.RefreshToken!,
-					AccessTokenExpires = DateTime.UtcNow.AddMinutes(15),
-					User = await _authService.GetUserInfoAsync(user)
-				};
+				SetTokenCookie("accessToken", accessToken, int.Parse(_jwtSettings.AccessTokenExpirationMinutes.ToString()));
+				SetTokenCookie("refreshToken", user.RefreshToken, int.Parse(_jwtSettings.RefreshTokenExpiryDays.ToString()) * 24 * 60);
 
-				return Ok(new ApiResponse<AuthResponse>
+				return Ok(new ApiResponse<UserProfileDto>
 				{
 					Success = true,
 					Message = "Token refreshed successfully",
-					Data = authResponse
+					Data = await _authService.GetUserInfoAsync(user)
 				});
+
 			}
 			catch (SecurityTokenException ex)
 			{
@@ -170,6 +202,12 @@ namespace BookingSystem.Controllers
 		{
 			var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 			var success = await _authService.LogoutAsync(userId!);
+
+			var refreshToken = Request.Cookies["refreshToken"];
+
+			// Clear cookies
+			Response.Cookies.Delete("accessToken");
+			Response.Cookies.Delete("refreshToken");
 
 			return Ok(new ApiResponse<object>
 			{
@@ -295,6 +333,18 @@ namespace BookingSystem.Controllers
 				Message = "User information retrieved successfully",
 				Data = userInfo
 			});
+		}
+
+		private void SetTokenCookie(string name, string value, int expirationMinutes)
+		{
+			var cookieOptions = new CookieOptions
+			{
+				HttpOnly = true,
+				Secure = true,            
+				SameSite = SameSiteMode.None, 
+				Expires = DateTime.UtcNow.AddMinutes(expirationMinutes)
+			};
+			Response.Cookies.Append(name, value, cookieOptions);
 		}
 	}
 }

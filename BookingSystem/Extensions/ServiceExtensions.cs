@@ -87,10 +87,16 @@ namespace BookingSystem.Extensions
 			{
 				options.AddPolicy("AllowSpecificOrigin", builder =>
 				{
-					builder.WithOrigins("http://localhost:3000", "https://localhost:3000")
-						   .AllowAnyMethod()
-						   .AllowAnyHeader()
-						   .AllowCredentials();
+					builder.WithOrigins(
+						"https://localhost:5173"
+					)
+					.AllowAnyMethod()
+					.AllowAnyHeader()
+					.AllowCredentials() 
+					.WithExposedHeaders(
+						"Content-Length",
+						"X-JSON-Response"
+					);
 				});
 			});
 			return services;
