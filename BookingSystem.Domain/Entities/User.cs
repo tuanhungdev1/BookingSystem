@@ -15,6 +15,7 @@ namespace BookingSystem.Domain.Entities
 		public string? PostalCode { get; set; }
 		public string? Avatar { get; set; }
 		public bool IsActive { get; set; } = true;
+		public bool IsDeleted { get; set; } = false;
 
 		public bool IsEmailConfirmed { get; set; }
 		public string? EmailConfirmationToken { get; set; }

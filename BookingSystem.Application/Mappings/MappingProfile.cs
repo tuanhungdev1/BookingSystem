@@ -35,9 +35,11 @@ namespace BookingSystem.Application.Mappings
 		{
 			CreateMap<User, UserProfileDto>()
 					.ForMember(dest => dest.Roles, opt => opt.Ignore());
-			CreateMap<User, UserProfileDto>();
-			CreateMap<CreateUserDto, User>();
-			CreateMap<UpdateUserDto, User>();
+			CreateMap<User, UserDto>();
+			CreateMap<CreateUserDto, User>()
+				.ForMember(dest => dest.Id, opt => opt.Ignore());
+			CreateMap<UpdateUserDto, User>()
+				.ForMember(dest => dest.Id, opt => opt.Ignore());
 		}
 
 		public void ConfigureHomestayMappings()

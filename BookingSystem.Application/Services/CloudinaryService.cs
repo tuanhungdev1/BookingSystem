@@ -14,12 +14,14 @@ namespace BookingSystem.Application.Services
 		private readonly Cloudinary _cloudinary;
 		private readonly IImageValidationService _validationService;
 		private readonly ILogger<CloudinaryService> _logger;
+		private readonly CloudinarySettings _cloudinarySettings;
 
 		public CloudinaryService(
 			IOptions<CloudinarySettings> config,
 			IImageValidationService validationService,
 			ILogger<CloudinaryService> logger)
 		{
+			_cloudinarySettings = config.Value;
 			var account = new Account(
 				config.Value.CloudName,
 				config.Value.ApiKey,

@@ -19,12 +19,16 @@ builder.Services.AddAutoMapperConfiguration();
 builder.Services.ConfigureIISIntegration();
 builder.Services.AddApplicationServices();
 builder.Services.AddRepositories();
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+	options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+}); ;
 builder.Services.AddCustomApiBehavior();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerConfiguration(builder.Configuration);
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

@@ -7,13 +7,14 @@ using BookingSystem.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 
 namespace BookingSystem.Controllers
 {
 	[ApiController]
 	[Route("api/[controller]")]
-	[Authorize] // Require authentication for all endpoints
+	//[Authorize]
 	public class UserController : ControllerBase
 	{
 		private readonly IUserService _userService;
@@ -27,368 +28,599 @@ namespace BookingSystem.Controllers
 			_userManager = userManager;
 		}
 
+		#region User Retrieval
+
 		[HttpGet("{id:int}")]
-		public async Task<ActionResult<ApiResponse<UserProfileDto>>> GetUserProfile(int id)
+		public async Task<ActionResult<ApiResponse<UserDto>>> GetUserProfile(int id)
 		{
-			var user = await _userService.GetUserProfileAsync(id);
-			if (user == null)
+			try
 			{
-				return NotFound(new ApiResponse<UserProfileDto>
+				var user = await _userService.GetUserAsync(id);
+				return Ok(new ApiResponse<UserDto>
 				{
-					Success = false,
-					Message = "User not found"
+					Success = true,
+					Message = "User profile retrieved successfully",
+					Data = user
 				});
 			}
-
-			return Ok(new ApiResponse<UserProfileDto>
+			catch (Exception ex)
 			{
-				Success = true,
-				Message = "User profile retrieved successfully",
-				Data = user
-			});
+				return NotFound(new ApiResponse<UserDto>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
 		}
 
 		[HttpGet("by-email/{email}")]
-		public async Task<ActionResult<ApiResponse<UserProfileDto>>> GetUserByEmail(string email)
+		public async Task<ActionResult<ApiResponse<UserDto>>> GetUserByEmail(string email)
 		{
-			var user = await _userService.GetUserByEmailAsync(email);
-			if (user == null)
+			try
 			{
-				return NotFound(new ApiResponse<UserProfileDto>
+				var user = await _userService.GetUserByEmailAsync(email);
+				return Ok(new ApiResponse<UserDto>
 				{
-					Success = false,
-					Message = "User not found"
+					Success = true,
+					Message = "User retrieved successfully",
+					Data = user
 				});
 			}
-
-			return Ok(new ApiResponse<UserProfileDto>
+			catch (Exception ex)
 			{
-				Success = true,
-				Message = "User retrieved successfully",
-				Data = user
-			});
-		}
-
-		[HttpPost]
-		[Authorize(Roles = "SuperAdmin,Admin")] // Only admins can create users
-		public async Task<ActionResult<ApiResponse<UserProfileDto>>> CreateUser(CreateUserDto createUserDto)
-		{
-			var user = await _userService.CreateUserAsync(createUserDto);
-			return Ok(new ApiResponse<UserProfileDto>
-			{
-				Success = true,
-				Message = "User created successfully",
-				Data = user
-			});
-		}
-
-		[HttpPut("{id:int}")]
-		public async Task<ActionResult<ApiResponse<object>>> UpdateUser(int id, UpdateUserDto updateUserDto)
-		{
-			// Users can only update their own profile unless they're admin
-			var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			var isAdmin = User.IsInRole("SuperAdmin") || User.IsInRole("Admin");
-
-			if (!isAdmin && currentUserId != id.ToString())
-			{
-				return Forbid();
-			}
-
-			var success = await _userService.UpdateUserAsync(id, updateUserDto);
-			if (!success)
-			{
-				return NotFound(new ApiResponse<object>
+				return NotFound(new ApiResponse<UserDto>
 				{
 					Success = false,
-					Message = "User not found or update failed"
+					Message = ex.Message
 				});
 			}
-
-			return Ok(new ApiResponse<object>
-			{
-				Success = true,
-				Message = "User updated successfully"
-			});
 		}
-
-		[HttpDelete("{id:int}")]
-		[Authorize(Roles = "SuperAdmin")] // Only super admin can delete users
-		public async Task<ActionResult<ApiResponse<object>>> DeleteUser(int id)
-		{
-			var success = await _userService.DeleteUserAsync(id);
-			if (!success)
-			{
-				return NotFound(new ApiResponse<object>
-				{
-					Success = false,
-					Message = "User not found"
-				});
-			}
-
-			return Ok(new ApiResponse<object>
-			{
-				Success = true,
-				Message = "User deleted successfully"
-			});
-		}
-
-		[HttpGet]
-		[Authorize(Roles = "SuperAdmin,Admin")] // Only admins can list all users
-		public async Task<ActionResult<ApiResponse<PagedResult<UserProfileDto>>>> GetUsers([FromQuery] UserFilter userFilter)
-		{
-			var users = await _userService.GetUsersAsync(userFilter);
-			return Ok(new ApiResponse<PagedResult<UserProfileDto>>
-			{
-				Success = true,
-				Message = "Users retrieved successfully",
-				Data = users
-			});
-		}
-
-		[HttpPut("{id:int}/status")]
-		[Authorize(Roles = "SuperAdmin,Admin")]
-		public async Task<ActionResult<ApiResponse<object>>> ChangeUserStatus(int id, [FromBody] bool isActive)
-		{
-			var success = await _userService.ChangeUserStatusAsync(id, isActive);
-			if (!success)
-			{
-				return NotFound(new ApiResponse<object>
-				{
-					Success = false,
-					Message = "User not found"
-				});
-			}
-
-			return Ok(new ApiResponse<object>
-			{
-				Success = true,
-				Message = $"User status changed to {(isActive ? "active" : "inactive")} successfully"
-			});
-		}
-
-		[HttpPost("{id:int}/roles")]
-		[Authorize(Roles = "SuperAdmin")]
-		public async Task<ActionResult<ApiResponse<object>>> AssignRoles(int id, [FromBody] IEnumerable<string> roles)
-		{
-			var success = await _userService.AssignRolesAsync(id, roles);
-			if (!success)
-			{
-				return BadRequest(new ApiResponse<object>
-				{
-					Success = false,
-					Message = "Failed to assign roles"
-				});
-			}
-
-			return Ok(new ApiResponse<object>
-			{
-				Success = true,
-				Message = "Roles assigned successfully"
-			});
-		}
-
-		[HttpDelete("{id:int}/roles")]
-		[Authorize(Roles = "SuperAdmin")]
-		public async Task<ActionResult<ApiResponse<object>>> RemoveRoles(int id, [FromBody] IEnumerable<string> roles)
-		{
-			var success = await _userService.RemoveRolesAsync(id, roles);
-			if (!success)
-			{
-				return BadRequest(new ApiResponse<object>
-				{
-					Success = false,
-					Message = "Failed to remove roles"
-				});
-			}
-
-			return Ok(new ApiResponse<object>
-			{
-				Success = true,
-				Message = "Roles removed successfully"
-			});
-		}
-
-		[HttpGet("{id:int}/roles")]
-		[Authorize(Roles = "SuperAdmin,Admin")]
-		public async Task<ActionResult<ApiResponse<IEnumerable<string>>>> GetUserRoles(int id)
-		{
-			var roles = await _userService.GetUserRolesAsync(id);
-			return Ok(new ApiResponse<IEnumerable<string>>
-			{
-				Success = true,
-				Message = "User roles retrieved successfully",
-				Data = roles
-			});
-		}
-
-		[HttpPut("{id:int}/password")]
-		[Authorize(Roles = "SuperAdmin,Admin")]
-		public async Task<ActionResult<ApiResponse<object>>> UpdateUserPassword(int id, [FromBody] string newPassword)
-		{
-			var success = await _userService.UpdateUserPasswordAsync(id, newPassword);
-			if (!success)
-			{
-				return BadRequest(new ApiResponse<object>
-				{
-					Success = false,
-					Message = "Failed to update password"
-				});
-			}
-
-			return Ok(new ApiResponse<object>
-			{
-				Success = true,
-				Message = "Password updated successfully"
-			});
-		}
-
-		[HttpPut("{id:int}/avatar")]
-		public async Task<ActionResult<ApiResponse<object>>> UpdateUserAvatar(int id, [FromBody] string avatarUrl)
-		{
-			// Users can only update their own avatar unless they're admin
-			var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			var isAdmin = User.IsInRole("SuperAdmin") || User.IsInRole("Admin");
-
-			if (!isAdmin && currentUserId != id.ToString())
-			{
-				return Forbid();
-			}
-
-			var success = await _userService.UpdateUserAvatarAsync(id, avatarUrl);
-			if (!success)
-			{
-				return NotFound(new ApiResponse<object>
-				{
-					Success = false,
-					Message = "User not found"
-				});
-			}
-
-			return Ok(new ApiResponse<object>
-			{
-				Success = true,
-				Message = "Avatar updated successfully"
-			});
-		}
-
-		[HttpGet("count")]
-		[Authorize(Roles = "SuperAdmin,Admin")]
-		public async Task<ActionResult<ApiResponse<int>>> GetTotalUsersCount()
-		{
-			var count = await _userService.GetTotalUsersCountAsync();
-			return Ok(new ApiResponse<int>
-			{
-				Success = true,
-				Message = "Total users count retrieved successfully",
-				Data = count
-			});
-		}
-
-		[HttpPut("{id:int}/unlock")]
-		[Authorize(Roles = "SuperAdmin,Admin")]
-		public async Task<ActionResult<ApiResponse<object>>> UnlockUser(int id)
-		{
-			var success = await _userService.UnlockUserAsync(id);
-			if (!success)
-			{
-				return NotFound(new ApiResponse<object>
-				{
-					Success = false,
-					Message = "User not found"
-				});
-			}
-
-			return Ok(new ApiResponse<object>
-			{
-				Success = true,
-				Message = "User unlocked successfully"
-			});
-		}
-
-		[HttpPut("{id:int}/lock")]
-		[Authorize(Roles = "SuperAdmin,Admin")]
-		public async Task<ActionResult<ApiResponse<object>>> LockUser(int id)
-		{
-			var success = await _userService.LockUserAsync(id);
-			if (!success)
-			{
-				return NotFound(new ApiResponse<object>
-				{
-					Success = false,
-					Message = "User not found"
-				});
-			}
-
-			return Ok(new ApiResponse<object>
-			{
-				Success = true,
-				Message = "User locked successfully"
-			});
-		}
-
-		//[HttpPost("{id:int}/reset-password")]
-		//[Authorize(Roles = "SuperAdmin,Admin")]
-		//public async Task<ActionResult<ApiResponse<object>>> ResetUserPassword(int id, [FromBody] ResetUserPasswordRequest request)
-		//{
-		//	try
-		//	{
-		//		var success = await _userService.ResetUserPasswordAsync(id, request.ResetToken, request.NewPassword);
-		//		if (!success)
-		//		{
-		//			return BadRequest(new ApiResponse<object>
-		//			{
-		//				Success = false,
-		//				Message = "Failed to reset password"
-		//			});
-		//		}
-
-		//		return Ok(new ApiResponse<object>
-		//		{
-		//			Success = true,
-		//			Message = "Password reset successfully"
-		//		});
-		//	}
-		//	catch (Exception ex)
-		//	{
-		//		return StatusCode(500, new ApiResponse<object>
-		//		{
-		//			Success = false,
-		//			Message = "An error occurred while resetting password"
-		//		});
-		//	}
-		//}
 
 		[HttpGet("me")]
-		[AllowAnonymous] // Override the controller-level authorization
-		[Authorize] // But still require authentication
-		public async Task<ActionResult<ApiResponse<UserProfileDto>>> GetCurrentUser()
+		[AllowAnonymous]
+		[Authorize]
+		public async Task<ActionResult<ApiResponse<UserDto>>> GetCurrentUser()
 		{
 			var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			if (string.IsNullOrEmpty(currentUserId))
+			if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userId))
 			{
-				return Unauthorized(new ApiResponse<UserProfileDto>
+				return Unauthorized(new ApiResponse<UserDto>
 				{
 					Success = false,
 					Message = "User not authenticated"
 				});
 			}
 
-			var user = await _userService.GetUserProfileAsync(int.Parse(currentUserId));
-			if (user == null)
+			try
 			{
-				return NotFound(new ApiResponse<UserProfileDto>
+				var user = await _userService.GetUserAsync(userId);
+				return Ok(new ApiResponse<UserDto>
 				{
-					Success = false,
-					Message = "User not found"
+					Success = true,
+					Message = "Current user information retrieved successfully",
+					Data = user
 				});
 			}
-
-			return Ok(new ApiResponse<UserProfileDto>
+			catch (Exception ex)
 			{
-				Success = true,
-				Message = "Current user information retrieved successfully",
-				Data = user
-			});
+				return NotFound(new ApiResponse<UserDto>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
 		}
+
+		[HttpGet]
+		//[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<ApiResponse<PagedResult<UserDto>>>> GetUsers([FromQuery] UserFilter userFilter)
+		{
+			try
+			{
+				var users = await _userService.GetUsersAsync(userFilter);
+				return Ok(new ApiResponse<PagedResult<UserDto>>
+				{
+					Success = true,
+					Message = "Users retrieved successfully",
+					Data = users
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<PagedResult<UserDto>>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		#endregion
+
+		#region User Management
+
+		[HttpPost]
+		//[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<ApiResponse<UserDto>>> CreateUser([FromBody] CreateUserDto createUserDto)
+		{
+			try
+			{
+				var user = await _userService.CreateUserAsync(createUserDto);
+				return CreatedAtAction(nameof(GetUserProfile), new { id = user.Id },
+					new ApiResponse<UserDto>
+					{
+						Success = true,
+						Message = "User created successfully",
+						Data = user
+					});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<UserDto>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		[HttpPut("{id:int}")]
+		[Authorize]
+		public async Task<ActionResult<ApiResponse<object>>> UpdateUser(int id, UpdateUserDto updateUserDto)
+		{
+			if (!IsAuthorizedForUser(id))
+				return Forbid();
+
+			try
+			{
+				await _userService.UpdateUserAsync(id, updateUserDto);
+				return Ok(new ApiResponse<object>
+				{
+					Success = true,
+					Message = "User updated successfully"
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		[HttpDelete("{id:int}")]
+		//[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<ApiResponse<object>>> DeleteUser(int id)
+		{
+			try
+			{
+				await _userService.DeleteUserAsync(id);
+				return Ok(new ApiResponse<object>
+				{
+					Success = true,
+					Message = "User deleted successfully"
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		#endregion
+
+		#region User Status & Lock Management
+
+		[HttpPut("{id:int}/status")]
+		[Authorize(Roles = "SuperAdmin,Admin")]
+		public async Task<ActionResult<ApiResponse<object>>> ChangeUserStatus(int id, [FromBody] bool isActive)
+		{
+			try
+			{
+				var success = await _userService.ChangeUserStatusAsync(id, isActive);
+				if (!success)
+					return NotFound(new ApiResponse<object>
+					{
+						Success = false,
+						Message = "User not found"
+					});
+
+				return Ok(new ApiResponse<object>
+				{
+					Success = true,
+					Message = $"User status changed to {(isActive ? "active" : "inactive")}"
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		[HttpPut("{id:int}/unlock")]
+		[Authorize(Roles = "SuperAdmin,Admin")]
+		public async Task<ActionResult<ApiResponse<object>>> UnlockUser(int id)
+		{
+			try
+			{
+				var success = await _userService.UnlockUserAsync(id);
+				if (!success)
+					return NotFound(new ApiResponse<object>
+					{
+						Success = false,
+						Message = "User not found"
+					});
+
+				return Ok(new ApiResponse<object>
+				{
+					Success = true,
+					Message = "User unlocked successfully"
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		[HttpPut("{id:int}/lock")]
+		[Authorize(Roles = "SuperAdmin,Admin")]
+		public async Task<ActionResult<ApiResponse<object>>> LockUser(int id)
+		{
+			try
+			{
+				var success = await _userService.LockUserAsync(id);
+				if (!success)
+					return NotFound(new ApiResponse<object>
+					{
+						Success = false,
+						Message = "User not found"
+					});
+
+				return Ok(new ApiResponse<object>
+				{
+					Success = true,
+					Message = "User locked successfully"
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		#endregion
+
+		#region Role Management
+
+		[HttpPost("{id:int}/roles")]
+		[Authorize(Roles = "SuperAdmin")]
+		public async Task<ActionResult<ApiResponse<object>>> AssignRoles(int id, [FromBody] IEnumerable<string> roles)
+		{
+			try
+			{
+				var success = await _userService.AssignRolesAsync(id, roles);
+				if (!success)
+					return BadRequest(new ApiResponse<object>
+					{
+						Success = false,
+						Message = "Failed to assign roles"
+					});
+
+				return Ok(new ApiResponse<object>
+				{
+					Success = true,
+					Message = "Roles assigned successfully"
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		[HttpDelete("{id:int}/roles")]
+		[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<ApiResponse<object>>> RemoveRoles(int id, [FromBody] IEnumerable<string> roles)
+		{
+			try
+			{
+				var success = await _userService.RemoveRolesAsync(id, roles);
+				if (!success)
+					return BadRequest(new ApiResponse<object>
+					{
+						Success = false,
+						Message = "Failed to remove roles"
+					});
+
+				return Ok(new ApiResponse<object>
+				{
+					Success = true,
+					Message = "Roles removed successfully"
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		[HttpGet("{id:int}/roles")]
+		[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<ApiResponse<IEnumerable<string>>>> GetUserRoles(int id)
+		{
+			try
+			{
+				var roles = await _userService.GetUserRolesAsync(id);
+				return Ok(new ApiResponse<IEnumerable<string>>
+				{
+					Success = true,
+					Message = "User roles retrieved successfully",
+					Data = roles
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<IEnumerable<string>>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		#endregion
+
+		#region Password Management
+
+		[HttpPut("{id:int}/password")]
+		[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<ApiResponse<object>>> UpdateUserPassword(int id, [FromBody] string newPassword)
+		{
+			try
+			{
+				var success = await _userService.UpdateUserPasswordAsync(id, newPassword);
+				if (!success)
+					return BadRequest(new ApiResponse<object>
+					{
+						Success = false,
+						Message = "Failed to update password"
+					});
+
+				return Ok(new ApiResponse<object>
+				{
+					Success = true,
+					Message = "Password updated successfully"
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		#endregion
+
+		#region Avatar Management
+
+		[HttpPost("{id:int}/avatar")]
+		public async Task<ActionResult<ApiResponse<UserAvatarDto>>> UploadUserAvatar(int id, [FromForm] UploadAvatarRequest uploadAvatarDto)
+		{
+			if (!IsAuthorizedForUser(id))
+				return Forbid();
+
+			if (uploadAvatarDto.File == null || uploadAvatarDto.File.Length == 0)
+				return BadRequest(new ApiResponse<UserAvatarDto>
+				{
+					Success = false,
+					Message = "No file provided"
+				});
+
+			try
+			{
+				await _userService.UploadUserAvatarAsync(id, uploadAvatarDto.File);
+				var avatarDto = await _userService.GetUserAvatarAsync(id);
+
+				return Ok(new ApiResponse<UserAvatarDto>
+				{
+					Success = true,
+					Message = "Avatar uploaded successfully",
+					Data = avatarDto
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<UserAvatarDto>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		[HttpDelete("{id:int}/avatar")]
+		public async Task<ActionResult<ApiResponse<object>>> DeleteUserAvatar(int id)
+		{
+			if (!IsAuthorizedForUser(id))
+				return Forbid();
+
+			try
+			{
+				var success = await _userService.DeleteUserAvatarAsync(id);
+				if (!success)
+					return NotFound(new ApiResponse<object>
+					{
+						Success = false,
+						Message = "User or avatar not found"
+					});
+
+				return Ok(new ApiResponse<object>
+				{
+					Success = true,
+					Message = "Avatar deleted successfully"
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		[HttpGet("{id:int}/avatar")]
+		[AllowAnonymous]
+		public async Task<ActionResult<ApiResponse<UserAvatarDto>>> GetUserAvatar(int id)
+		{
+			try
+			{
+				var avatar = await _userService.GetUserAvatarAsync(id);
+				if (avatar == null)
+					return NotFound(new ApiResponse<UserAvatarDto>
+					{
+						Success = false,
+						Message = "Avatar not found"
+					});
+
+				return Ok(new ApiResponse<UserAvatarDto>
+				{
+					Success = true,
+					Message = "Avatar retrieved successfully",
+					Data = avatar
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<UserAvatarDto>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		#endregion
+
+		#region Statistics
+
+		[HttpGet("stats/total-count")]
+		[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<ApiResponse<int>>> GetTotalUsersCount()
+		{
+			try
+			{
+				var count = await _userService.GetTotalUsersCountAsync();
+				return Ok(new ApiResponse<int>
+				{
+					Success = true,
+					Message = "Total users count retrieved successfully",
+					Data = count
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<int>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		[HttpGet("stats/active-count")]
+		[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<ApiResponse<int>>> GetActiveUsersCount()
+		{
+			try
+			{
+				var count = await _userService.GetActiveUsersCountAsync();
+				return Ok(new ApiResponse<int>
+				{
+					Success = true,
+					Message = "Active users count retrieved successfully",
+					Data = count
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<int>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		[HttpGet("stats/overview")]
+		[Authorize(Roles = "SuperAdmin,Admin")]
+		public async Task<ActionResult<ApiResponse<UserStatisticsDto>>> GetUserStatistics()
+		{
+			try
+			{
+				var stats = await _userService.GetUserStatisticsAsync();
+				return Ok(new ApiResponse<UserStatisticsDto>
+				{
+					Success = true,
+					Message = "User statistics retrieved successfully",
+					Data = stats
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<UserStatisticsDto>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		#endregion
+
+		#region Helper Methods
+
+		private bool IsAuthorizedForUser(int userId)
+		{
+			var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+			var isAdmin = User.IsInRole("Admin");
+
+			return isAdmin || (currentUserId != null && currentUserId == userId.ToString());
+		}
+
+		#endregion
+
+		
 	}
 }
