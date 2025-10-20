@@ -10,7 +10,7 @@ namespace BookingSystem.Controllers
 {
 	[ApiController]
 	[Route("api/[controller]")]
-	[Authorize] // Require authentication for all endpoints
+	[Authorize] 
 	public class AmenityController : ControllerBase
 	{
 		private readonly IAmenityService _amenityService;

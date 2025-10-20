@@ -8,6 +8,7 @@ namespace BookingSystem.Domain.Base.Filter
 {
     public class RuleFilter : PaginationFilter
     {
+		public string? Search { get; set; }
 		public string? RuleName { get; set; }
 		public string? RuleType { get; set; }
 		public bool? IsActive { get; set; }

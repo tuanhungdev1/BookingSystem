@@ -7,14 +7,15 @@ using BookingSystem.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
+using Org.BouncyCastle.Crypto.Macs;
 using System.Security.Claims;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace BookingSystem.Controllers
 {
 	[ApiController]
 	[Route("api/[controller]")]
-	//[Authorize]
+	[Authorize]
 	public class UserController : ControllerBase
 	{
 		private readonly IUserService _userService;
@@ -77,7 +78,6 @@ namespace BookingSystem.Controllers
 		}
 
 		[HttpGet("me")]
-		[AllowAnonymous]
 		[Authorize]
 		public async Task<ActionResult<ApiResponse<UserDto>>> GetCurrentUser()
 		{
@@ -111,8 +111,10 @@ namespace BookingSystem.Controllers
 			}
 		}
 
+		
+
 		[HttpGet]
-		//[Authorize(Roles = "Admin")]
+		[Authorize(Roles = "Admin")]
 		public async Task<ActionResult<ApiResponse<PagedResult<UserDto>>>> GetUsers([FromQuery] UserFilter userFilter)
 		{
 			try
@@ -140,7 +142,7 @@ namespace BookingSystem.Controllers
 		#region User Management
 
 		[HttpPost]
-		//[Authorize(Roles = "Admin")]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<UserDto>>> CreateUser([FromBody] CreateUserDto createUserDto)
 		{
 			try
@@ -165,7 +167,7 @@ namespace BookingSystem.Controllers
 		}
 
 		[HttpPut("{id:int}")]
-		[Authorize]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> UpdateUser(int id, UpdateUserDto updateUserDto)
 		{
 			if (!IsAuthorizedForUser(id))
@@ -191,7 +193,7 @@ namespace BookingSystem.Controllers
 		}
 
 		[HttpDelete("{id:int}")]
-		//[Authorize(Roles = "Admin")]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> DeleteUser(int id)
 		{
 			try
@@ -218,7 +220,7 @@ namespace BookingSystem.Controllers
 		#region User Status & Lock Management
 
 		[HttpPut("{id:int}/status")]
-		[Authorize(Roles = "SuperAdmin,Admin")]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> ChangeUserStatus(int id, [FromBody] bool isActive)
 		{
 			try
@@ -248,7 +250,7 @@ namespace BookingSystem.Controllers
 		}
 
 		[HttpPut("{id:int}/unlock")]
-		[Authorize(Roles = "SuperAdmin,Admin")]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> UnlockUser(int id)
 		{
 			try
@@ -278,7 +280,7 @@ namespace BookingSystem.Controllers
 		}
 
 		[HttpPut("{id:int}/lock")]
-		[Authorize(Roles = "SuperAdmin,Admin")]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> LockUser(int id)
 		{
 			try
@@ -312,7 +314,7 @@ namespace BookingSystem.Controllers
 		#region Role Management
 
 		[HttpPost("{id:int}/roles")]
-		[Authorize(Roles = "SuperAdmin")]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> AssignRoles(int id, [FromBody] IEnumerable<string> roles)
 		{
 			try
@@ -342,7 +344,7 @@ namespace BookingSystem.Controllers
 		}
 
 		[HttpDelete("{id:int}/roles")]
-		[Authorize(Roles = "Admin")]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> RemoveRoles(int id, [FromBody] IEnumerable<string> roles)
 		{
 			try
@@ -372,7 +374,7 @@ namespace BookingSystem.Controllers
 		}
 
 		[HttpGet("{id:int}/roles")]
-		[Authorize(Roles = "Admin")]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<IEnumerable<string>>>> GetUserRoles(int id)
 		{
 			try
@@ -400,7 +402,7 @@ namespace BookingSystem.Controllers
 		#region Password Management
 
 		[HttpPut("{id:int}/password")]
-		[Authorize(Roles = "Admin")]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> UpdateUserPassword(int id, [FromBody] string newPassword)
 		{
 			try
@@ -436,19 +438,24 @@ namespace BookingSystem.Controllers
 		[HttpPost("{id:int}/avatar")]
 		public async Task<ActionResult<ApiResponse<UserAvatarDto>>> UploadUserAvatar(int id, [FromForm] UploadAvatarRequest uploadAvatarDto)
 		{
+
+			if (uploadAvatarDto?.Image == null || uploadAvatarDto.Image.Length == 0)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "No file uploaded"
+				});
+			}
+
+
+
 			if (!IsAuthorizedForUser(id))
 				return Forbid();
 
-			if (uploadAvatarDto.File == null || uploadAvatarDto.File.Length == 0)
-				return BadRequest(new ApiResponse<UserAvatarDto>
-				{
-					Success = false,
-					Message = "No file provided"
-				});
-
 			try
 			{
-				await _userService.UploadUserAvatarAsync(id, uploadAvatarDto.File);
+				await _userService.UploadUserAvatarAsync(id, uploadAvatarDto.Image);
 				var avatarDto = await _userService.GetUserAvatarAsync(id);
 
 				return Ok(new ApiResponse<UserAvatarDto>
@@ -536,7 +543,7 @@ namespace BookingSystem.Controllers
 		#region Statistics
 
 		[HttpGet("stats/total-count")]
-		[Authorize(Roles = "Admin")]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<int>>> GetTotalUsersCount()
 		{
 			try
@@ -560,7 +567,7 @@ namespace BookingSystem.Controllers
 		}
 
 		[HttpGet("stats/active-count")]
-		[Authorize(Roles = "Admin")]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<int>>> GetActiveUsersCount()
 		{
 			try
@@ -584,7 +591,7 @@ namespace BookingSystem.Controllers
 		}
 
 		[HttpGet("stats/overview")]
-		[Authorize(Roles = "SuperAdmin,Admin")]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<UserStatisticsDto>>> GetUserStatistics()
 		{
 			try

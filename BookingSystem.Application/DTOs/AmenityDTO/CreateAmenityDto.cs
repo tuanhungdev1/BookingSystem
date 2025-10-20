@@ -12,9 +12,6 @@ namespace BookingSystem.Application.DTOs.AmenityDTO
 		[MaxLength(500, ErrorMessage = "Description cannot exceed 500 characters.")]
 		public string? AmenityDescription { get; set; }
 
-		[Url(ErrorMessage = "IconUrl must be a valid URL.")]
-		public string? IconUrl { get; set; }
-
 		[Required(ErrorMessage = "Category is required.")]
 		[MaxLength(100, ErrorMessage = "Category cannot exceed 100 characters.")]
 		public string Category { get; set; } = string.Empty;

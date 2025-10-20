@@ -340,9 +340,9 @@ namespace BookingSystem.Controllers
 			var cookieOptions = new CookieOptions
 			{
 				HttpOnly = true,
-				Secure = true,            
-				SameSite = SameSiteMode.None, 
-				Expires = DateTime.UtcNow.AddMinutes(expirationMinutes)
+				Secure = true,
+				SameSite = SameSiteMode.Lax, 
+				Expires = DateTimeOffset.UtcNow.AddMinutes(expirationMinutes)
 			};
 			Response.Cookies.Append(name, value, cookieOptions);
 		}

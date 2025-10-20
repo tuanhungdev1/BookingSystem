@@ -27,8 +27,9 @@ namespace BookingSystem.Application.DTOs.UserDTO
 		public DateTime CreatedAt { get; set; }
 		public DateTime? UpdatedAt { get; set; }
 		public DateTime? LastLoginAt { get; set; }
-		public bool IsDeleted { get; set; } 
-
+		public bool IsDeleted { get; set; }
+		public bool IsLocked { get; set; }
+		public string? PhoneNumber { get; set; }
 		// (Tùy chọn) Nếu bạn muốn hiển thị vai trò người dùng:
 		public IList<string>? Roles { get; set; }
 	}

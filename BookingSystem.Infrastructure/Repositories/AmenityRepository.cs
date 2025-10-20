@@ -25,9 +25,9 @@ namespace BookingSystem.Infrastructure.Repositories
 		public async Task<PagedResult<Amenity>> GetPagedAsync(AmenityFilter amenityFilter)
 		{
 			var query = _dbSet.AsQueryable();
-			if (!string.IsNullOrEmpty(amenityFilter.SearchTerm))
+			if (!string.IsNullOrEmpty(amenityFilter.Search))
 			{
-				var searchTerm = amenityFilter.SearchTerm.ToLower();
+				var searchTerm = amenityFilter.Search.ToLower();
 				query = query.Where(a => a.AmenityName.ToLower().Contains(searchTerm) ||
 										 a.AmenityDescription.ToLower().Contains(searchTerm) ||
 										 a.Category.ToLower().Contains(searchTerm));
@@ -41,11 +41,13 @@ namespace BookingSystem.Infrastructure.Repositories
 			{
 				query = query.Where(a => a.IsActive == amenityFilter.IsActive.Value);
 			}
-			query = amenityFilter.SortBy?.ToLower() switch
+			query = amenityFilter.SortBy switch
 			{
-				"name" => amenityFilter.SortDirection == "desc" ? query.OrderByDescending(a => a.AmenityName.ToLower()) : query.OrderBy(a => a.AmenityName.ToLower()),
-				"createdat" => amenityFilter.SortDirection == "desc" ? query.OrderByDescending(a => a.CreatedAt) : query.OrderBy(a => a.CreatedAt),
-				_ => query.OrderBy(a => a.AmenityName.ToLower())
+				"amenityName" => amenityFilter.SortOrder == "desc" ? query.OrderByDescending(a => a.AmenityName.ToLower()) : query.OrderBy(a => a.AmenityName.ToLower()),
+				"amenityDescription" => amenityFilter.SortOrder == "desc" ? query.OrderByDescending(a => a.AmenityDescription.ToLower()) : query.OrderBy(a => a.AmenityDescription.ToLower()),
+				"category" => amenityFilter.SortOrder == "desc" ? query.OrderByDescending(a => a.Category.ToLower()) : query.OrderBy(a => a.Category.ToLower()),
+				"createdAt" => amenityFilter.SortOrder == "desc" ? query.OrderByDescending(a => a.CreatedAt) : query.OrderBy(a => a.CreatedAt),
+				_ => query.OrderBy(a => a.CreatedAt)
 			};
 			var totalCount = await Task.FromResult(query.Count());
 			var items = await Task.FromResult(query

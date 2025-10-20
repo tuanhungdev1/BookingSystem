@@ -100,7 +100,7 @@ namespace BookingSystem.Controllers
 		/// Cập nhật thông tin homestay (Owner hoặc Admin)
 		/// </summary>
 		[HttpPut("{id:int}")]
-		[Authorize(Roles = "Host,Admin")]
+		[Authorize(Roles = "Host, Admin")]
 		public async Task<ActionResult<ApiResponse<HomestayDto>>> Update(int id, [FromForm] UpdateHomestayDto request)
 		{
 			// Lấy UserId từ Claims

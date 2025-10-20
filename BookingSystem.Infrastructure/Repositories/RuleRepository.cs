@@ -21,6 +21,16 @@ namespace BookingSystem.Infrastructure.Repositories
 			var query = _dbSet.AsQueryable();
 
 			// Apply filters
+
+			if (!string.IsNullOrEmpty(filter.Search))
+			{
+				var searchTerm = filter.Search.ToLower();
+				query = query.Where(r => r.RuleName.ToLower().Contains(searchTerm) ||
+										 r.RuleType.ToLower().Contains(searchTerm) ||
+										 r.RuleDescription.ToLower().Contains(searchTerm)
+										 );
+			}
+
 			if (!string.IsNullOrWhiteSpace(filter.RuleName))
 			{
 				query = query.Where(r => r.RuleName.Contains(filter.RuleName));
@@ -42,9 +52,12 @@ namespace BookingSystem.Infrastructure.Repositories
 			// Apply sorting
 			query = filter.SortBy switch
 			{
-				"RuleName" => filter.SortOrder == "desc" ? query.OrderByDescending(r => r.RuleName) : query.OrderBy(r => r.RuleName),
-				"DisplayOrder" => filter.SortOrder == "desc" ? query.OrderByDescending(r => r.DisplayOrder) : query.OrderBy(r => r.DisplayOrder),
-				_ => query.OrderBy(r => r.Id) // Default sorting
+				"ruleName" => filter.SortOrder == "desc" ? query.OrderByDescending(r => r.RuleName) : query.OrderBy(r => r.RuleName),
+				"ruleDescription" => filter.SortOrder == "desc" ? query.OrderByDescending(r => r.RuleDescription) : query.OrderBy(r => r.RuleDescription),
+				"ruleType" => filter.SortOrder == "desc" ? query.OrderByDescending(r => r.RuleType) : query.OrderBy(r => r.RuleType),
+				"createdAt" => filter.SortOrder == "desc" ? query.OrderByDescending(r => r.CreatedAt) : query.OrderBy(r => r.CreatedAt),
+				"displayOrder" => filter.SortOrder == "desc" ? query.OrderByDescending(r => r.DisplayOrder) : query.OrderBy(r => r.DisplayOrder),
+				_ => query.OrderBy(r => r.CreatedAt) // Default sorting
 			};
 
 			// Apply pagination

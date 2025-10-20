@@ -12,10 +12,10 @@ namespace BookingSystem.Application.DTOs.RuleDTO
 		[MaxLength(500, ErrorMessage = "Rule description cannot exceed 500 characters")]
 		public string? RuleDescription { get; set; }
 
+		[Required(ErrorMessage = "IconFile is required")]
 		public IFormFile? IconFile { get; set; }
 
 		[Required(ErrorMessage = "Rule type is required")]
-		//[RegularExpression("^(Allowed|NotAllowed|Required)$", ErrorMessage = "Rule type must be Allowed, NotAllowed, or Required")]
 		public string RuleType { get; set; } = string.Empty;
 
 		public bool IsActive { get; set; } = true;

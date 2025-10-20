@@ -10,7 +10,7 @@ namespace BookingSystem.Controllers
 {
 	[ApiController]
 	[Route("api/[controller]")]
-	[Authorize(Roles = "Admin")] // Chỉ Admin mới được quản lý Rule
+	[Authorize]
 	public class RuleController : ControllerBase
 	{
 		private readonly IRuleService _ruleService;
@@ -24,7 +24,7 @@ namespace BookingSystem.Controllers
 		/// Lấy danh sách Rule (có phân trang và filter)
 		/// </summary>
 		[HttpGet]
-		[AllowAnonymous] // Cho phép Guest hoặc User xem danh sách Rule
+		[Authorize(Roles = "Admin")]
 		public async Task<ActionResult<ApiResponse<PagedResult<RuleDto>>>> GetAll([FromQuery] RuleFilter filter)
 		{
 			var rules = await _ruleService.GetAllRulesAsync(filter);
@@ -40,7 +40,6 @@ namespace BookingSystem.Controllers
 		/// Lấy Rule theo ID
 		/// </summary>
 		[HttpGet("{id:int}")]
-		[AllowAnonymous]
 		public async Task<ActionResult<ApiResponse<RuleDto>>> GetById(int id)
 		{
 			var rule = await _ruleService.GetByIdAsync(id);
@@ -65,7 +64,6 @@ namespace BookingSystem.Controllers
 		/// Lấy danh sách Rule đang active
 		/// </summary>
 		[HttpGet("active")]
-		[AllowAnonymous]
 		public async Task<ActionResult<ApiResponse<IEnumerable<RuleDto>>>> GetActiveRules()
 		{
 			var rules = await _ruleService.GetActiveRulesAsync();
@@ -81,7 +79,6 @@ namespace BookingSystem.Controllers
 		/// Lấy danh sách Rule theo loại (Allowed / NotAllowed / Required)
 		/// </summary>
 		[HttpGet("type/{ruleType}")]
-		[AllowAnonymous]
 		public async Task<ActionResult<ApiResponse<IEnumerable<RuleDto>>>> GetByRuleType(string ruleType)
 		{
 			var rules = await _ruleService.GetByRuleTypeAsync(ruleType);
@@ -97,6 +94,7 @@ namespace BookingSystem.Controllers
 		/// Tạo mới Rule (Admin)
 		/// </summary>
 		[HttpPost]
+		[Authorize(Roles = "Admin")]
 		public async Task<ActionResult<ApiResponse<RuleDto>>> Create([FromForm] CreateRuleDto request)
 		{
 			var rule = await _ruleService.CreateAsync(request);
@@ -112,6 +110,7 @@ namespace BookingSystem.Controllers
 		/// Cập nhật Rule (Admin)
 		/// </summary>
 		[HttpPut("{id:int}")]
+		[Authorize(Roles = "Admin")]
 		public async Task<ActionResult<ApiResponse<RuleDto>>> Update(int id, [FromForm] UpdateRuleDto request)
 		{
 			var rule = await _ruleService.UpdateAsync(id, request);
@@ -136,6 +135,7 @@ namespace BookingSystem.Controllers
 		/// Xóa Rule (Admin)
 		/// </summary>
 		[HttpDelete("{id:int}")]
+		[Authorize(Roles = "Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
 		{
 			var success = await _ruleService.DeleteAsync(id);

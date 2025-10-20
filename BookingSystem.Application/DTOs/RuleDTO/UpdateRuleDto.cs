@@ -14,8 +14,6 @@ namespace BookingSystem.Application.DTOs.RuleDTO
 
 		public IFormFile? IconFile { get; set; }
 		public ImageAction ImageAction { get; set; } = ImageAction.Keep;
-
-		[RegularExpression("^(Allowed|NotAllowed|Required)$", ErrorMessage = "Rule type must be Allowed, NotAllowed, or Required")]
 		public string? RuleType { get; set; }
 
 		public bool? IsActive { get; set; }

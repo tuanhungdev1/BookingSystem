@@ -50,7 +50,6 @@ namespace BookingSystem.Application.Services
 
 			try
 			{
-				await _unitOfWork.BeginTransactionAsync();
 
 				// Map DTO to entity
 				var rule = _mapper.Map<Rule>(request);
@@ -79,7 +78,6 @@ namespace BookingSystem.Application.Services
 				await _ruleRepository.AddAsync(rule);
 				await _ruleRepository.SaveChangesAsync();
 
-				await _unitOfWork.CommitTransactionAsync();
 				_logger.LogInformation("Rule with ID {RuleId} created successfully.", rule.Id);
 
 				return _mapper.Map<RuleDto>(rule);
@@ -87,7 +85,6 @@ namespace BookingSystem.Application.Services
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error occurred during rule creation. Initiating rollback.");
-				await _unitOfWork.RollbackTransactionAsync();
 
 				// Rollback uploaded icon in Cloudinary
 				if (uploadedPublicId != null)
@@ -124,11 +121,13 @@ namespace BookingSystem.Application.Services
 
 			string? oldPublicId = null;
 			string? newPublicId = null;
+			var currentIconUrl = rule.IconUrl;
 
 			try
 			{
-				await _unitOfWork.BeginTransactionAsync();
-
+				// Map updated fields from DTO to entity
+				_mapper.Map(request, rule);
+				rule.IconUrl = currentIconUrl;
 				// Handle icon update
 				if (request.IconFile != null)
 				{
@@ -154,9 +153,6 @@ namespace BookingSystem.Application.Services
 					newPublicId = uploadResult.Data.PublicId;
 					rule.IconUrl = uploadResult.Data.Url;
 				}
-
-				// Map updated fields from DTO to entity
-				_mapper.Map(request, rule);
 				rule.UpdatedAt = DateTime.UtcNow;
 
 				_ruleRepository.Update(rule);
@@ -171,8 +167,6 @@ namespace BookingSystem.Application.Services
 						_logger.LogWarning("Failed to delete old icon with PublicId {PublicId} from Cloudinary.", oldPublicId);
 					}
 				}
-
-				await _unitOfWork.CommitTransactionAsync();
 				_logger.LogInformation("Rule with ID {RuleId} updated successfully.", id);
 
 				return _mapper.Map<RuleDto>(rule);
@@ -180,7 +174,6 @@ namespace BookingSystem.Application.Services
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error occurred during rule update. Initiating rollback.");
-				await _unitOfWork.RollbackTransactionAsync();
 
 				// Rollback new uploaded icon
 				if (newPublicId != null)
@@ -206,8 +199,6 @@ namespace BookingSystem.Application.Services
 
 			try
 			{
-				await _unitOfWork.BeginTransactionAsync();
-
 				// Delete icon from Cloudinary if exists
 				if (!string.IsNullOrWhiteSpace(rule.IconUrl))
 				{
@@ -222,8 +213,6 @@ namespace BookingSystem.Application.Services
 
 				_ruleRepository.Remove(rule);
 				await _ruleRepository.SaveChangesAsync();
-
-				await _unitOfWork.CommitTransactionAsync();
 				_logger.LogInformation("Rule with ID {RuleId} deleted successfully.", id);
 
 				return true;
@@ -231,7 +220,6 @@ namespace BookingSystem.Application.Services
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error occurred during rule deletion. Initiating rollback.");
-				await _unitOfWork.RollbackTransactionAsync();
 				throw;
 			}
 		}

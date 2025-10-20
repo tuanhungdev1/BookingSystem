@@ -127,7 +127,63 @@ namespace BookingSystem.Application.Services
 
 			try
 			{
-				_mapper.Map(request, user);
+				// THÊM: Kiểm tra email không bị trùng (nếu có thay đổi)
+				if (!string.IsNullOrEmpty(request.Email) && request.Email != user.Email)
+				{
+					var existingUser = await _userManager.FindByEmailAsync(request.Email);
+					if (existingUser != null)
+					{
+						throw new BadRequestException($"Email '{request.Email}' is already in use");
+					}
+				}
+
+				// Map DTO sang User entity (chỉ update các field có giá trị)
+				if (!string.IsNullOrEmpty(request.FirstName))
+					user.FirstName = request.FirstName;
+
+				if (!string.IsNullOrEmpty(request.LastName))
+					user.LastName = request.LastName;
+
+				if (!string.IsNullOrEmpty(request.Email) && request.Email != user.Email)
+					user.Email = request.Email;
+
+				if (request.DateOfBirth.HasValue)
+					user.DateOfBirth = request.DateOfBirth;
+
+				if (request.Gender.HasValue)
+					user.Gender = request.Gender;
+
+				if (!string.IsNullOrEmpty(request.Address))
+					user.Address = request.Address;
+
+				if (!string.IsNullOrEmpty(request.City))
+					user.City = request.City;
+
+				if (!string.IsNullOrEmpty(request.Country))
+					user.Country = request.Country;
+
+				if (!string.IsNullOrEmpty(request.PostalCode))
+					user.PostalCode = request.PostalCode;
+
+				if (!string.IsNullOrEmpty(request.PhoneNumber))
+					user.PhoneNumber = request.PhoneNumber;
+
+				if (request.IsActive.HasValue)
+					user.IsActive = request.IsActive.Value;
+
+				if (request.IsLocked.HasValue)
+				{
+					// THÊM: Xử lý Lock/Unlock logic
+					if (request.IsLocked.Value)
+					{
+						await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
+					}
+					else
+					{
+						await _userManager.SetLockoutEndDateAsync(user, null);
+					}
+				}
+
 				user.UpdatedAt = DateTime.UtcNow;
 
 				var result = await _userManager.UpdateAsync(user);
@@ -136,6 +192,12 @@ namespace BookingSystem.Application.Services
 					var errors = string.Join(", ", result.Errors.Select(e => e.Description));
 					_logger.LogError("User update failed: {Errors}", errors);
 					throw new BadRequestException($"User update failed: {errors}");
+				}
+
+				// THÊM: Update roles nếu được cung cấp
+				if (request.Roles?.Any() == true)
+				{
+					await AssignRolesAsync(user.Id, request.Roles);
 				}
 
 				_logger.LogInformation("User updated successfully: {UserId}", userId);
@@ -245,6 +307,8 @@ namespace BookingSystem.Application.Services
 					return false;
 				}
 
+				user.IsLocked = false;
+
 				var result = await _userManager.SetLockoutEndDateAsync(user, null);
 				if (result.Succeeded)
 				{
@@ -273,6 +337,8 @@ namespace BookingSystem.Application.Services
 					_logger.LogWarning("User not found for lock with ID: {UserId}", userId);
 					return false;
 				}
+
+				user.IsLocked = true;
 
 				var result = await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
 				if (result.Succeeded)
@@ -464,15 +530,26 @@ namespace BookingSystem.Application.Services
 		public async Task<bool> UploadUserAvatarAsync(int userId, IFormFile image)
 		{
 			var user = await _userManager.FindByIdAsync(userId.ToString())
-				?? throw new BadRequestException($"User not found with ID: {userId}");
+				?? throw new NotFoundException($"User not found with ID: {userId}");
+
+			// Validate file
+			const long maxFileSize = 5 * 1024 * 1024; // 5MB
+			var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
+
+			if (image.Length > maxFileSize)
+				throw new BadRequestException("File size must not exceed 5MB");
+
+			var extension = Path.GetExtension(image.FileName).ToLower();
+			if (!allowedExtensions.Contains(extension))
+				throw new BadRequestException("Only jpg, jpeg, png, gif formats are allowed");
 
 			var publicId = string.Empty;
 
 			try
 			{
-				await _unitOfWork.BeginTransactionAsync();
+				// THAY ĐỔI: Không dùng transaction - xóa avatar cũ trước, upload mới, rồi update DB
 
-				// Delete old avatar if exists
+				// 1. Delete old avatar if exists
 				if (!string.IsNullOrEmpty(user.Avatar))
 				{
 					var oldPublicId = _cloudinaryService.GetPublicIdFromUrl(user.Avatar);
@@ -483,7 +560,7 @@ namespace BookingSystem.Application.Services
 					}
 				}
 
-				// Upload new avatar
+				// 2. Upload new avatar
 				var imageParam = new ImageUploadDto
 				{
 					File = image,
@@ -492,34 +569,39 @@ namespace BookingSystem.Application.Services
 
 				var uploadResult = await _cloudinaryService.UploadImageAsync(imageParam);
 				if (!uploadResult.Success)
-				{
 					throw new BadRequestException($"Failed to upload image: {uploadResult.ErrorMessage}");
-				}
 
-				user.Avatar = uploadResult.Data.Url;
 				publicId = uploadResult.Data.PublicId;
+
+				// 3. Update user avatar URL
+				user.Avatar = uploadResult.Data.Url;
 				user.UpdatedAt = DateTime.UtcNow;
 
 				var result = await _userManager.UpdateAsync(user);
 				if (!result.Succeeded)
 				{
-					throw new BadRequestException("Failed to update user avatar");
+					var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+					throw new BadRequestException($"Failed to update user avatar: {errors}");
 				}
 
-				_logger.LogInformation("Avatar uploaded: {UserId}", userId);
-				await _unitOfWork.CommitTransactionAsync();
-
+				_logger.LogInformation("Avatar uploaded successfully: {UserId}", userId);
 				return true;
 			}
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error uploading avatar for user: {UserId}", userId);
-				await _unitOfWork.RollbackTransactionAsync();
 
-				// Cleanup uploaded image on failure
+				// Cleanup: Delete uploaded image on failure
 				if (!string.IsNullOrEmpty(publicId))
 				{
-					await _cloudinaryService.DeleteImageAsync(publicId);
+					try
+					{
+						await _cloudinaryService.DeleteImageAsync(publicId);
+					}
+					catch (Exception cleanupEx)
+					{
+						_logger.LogWarning(cleanupEx, "Failed to cleanup image: {PublicId}", publicId);
+					}
 				}
 
 				throw;
@@ -539,8 +621,9 @@ namespace BookingSystem.Application.Services
 
 			try
 			{
-				await _unitOfWork.BeginTransactionAsync();
+				// THAY ĐỔI: Không dùng transaction
 
+				// 1. Delete from Cloudinary
 				var publicId = _cloudinaryService.GetPublicIdFromUrl(user.Avatar);
 				if (!string.IsNullOrEmpty(publicId))
 				{
@@ -548,22 +631,27 @@ namespace BookingSystem.Application.Services
 					if (!deleteResult.Success)
 					{
 						_logger.LogWarning("Failed to delete avatar from Cloudinary: {PublicId}", publicId);
+						// Tiếp tục - không throw exception
 					}
 				}
 
+				// 2. Clear avatar URL from DB
 				user.Avatar = null;
 				user.UpdatedAt = DateTime.UtcNow;
-				await _userManager.UpdateAsync(user);
 
-				_logger.LogInformation("Avatar deleted: {UserId}", userId);
-				await _unitOfWork.CommitTransactionAsync();
+				var result = await _userManager.UpdateAsync(user);
+				if (!result.Succeeded)
+				{
+					var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+					throw new BadRequestException($"Failed to delete user avatar: {errors}");
+				}
 
+				_logger.LogInformation("Avatar deleted successfully: {UserId}", userId);
 				return true;
 			}
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error deleting avatar for user: {UserId}", userId);
-				await _unitOfWork.RollbackTransactionAsync();
 				throw;
 			}
 		}

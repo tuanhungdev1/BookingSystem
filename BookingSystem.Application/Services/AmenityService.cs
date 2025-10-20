@@ -33,6 +33,7 @@ namespace BookingSystem.Application.Services
 			_mapper = mapper;
 			_logger = logger;
 			_amenityRepository = amenityRepository;
+			_cloudinaryService = cloudinaryService;
 		}
 
 		public async Task<PagedResult<AmenityDto>> GetPagedResultAsync(AmenityFilter amenityFilter)
@@ -82,7 +83,7 @@ namespace BookingSystem.Application.Services
 					var imageUploadDto = new ImageUploadDto
 					{
 						File = request.IconFile,
-						Folder = $"{FolderImages.Properties}/{newAmenity.AmenityName}_{newAmenity.Id}",
+						Folder = $"{FolderImages.Properties}/{newAmenity.Id}",
 					};
 					var uploadResult = await _cloudinaryService.UploadImageAsync(imageUploadDto);
 					if (!uploadResult.Success)
@@ -131,12 +132,14 @@ namespace BookingSystem.Application.Services
 				_logger.LogWarning("Amenity with ID {PropertyTypeId} not found.", id);
 				throw new NotFoundException($"Amenity type with ID {id} not found.");
 			}
+			var currentIconUrl = existingAmentity.IconUrl;
 			var oldIconPublicId = String.Empty;
 			var newIconPublicId = String.Empty;
 			try
 			{
 				// Cập nhật các trường thông tin
 				_mapper.Map(request, existingAmentity);
+				existingAmentity.IconUrl = currentIconUrl;
 
 				if (request.IconFile != null)
 				{
@@ -149,7 +152,7 @@ namespace BookingSystem.Application.Services
 					var imageUploadDto = new ImageUploadDto
 					{
 						File = request.IconFile,
-						Folder = $"{FolderImages.Properties}/{existingAmentity.AmenityName}_{existingAmentity.Id}",
+						Folder = $"{FolderImages.Properties}/{existingAmentity.Id}",
 					};
 					var uploadResult = await _cloudinaryService.UploadImageAsync(imageUploadDto);
 					if (!uploadResult.Success)
@@ -162,7 +165,10 @@ namespace BookingSystem.Application.Services
 				}
 
 				// Kiểm tra trường hợp nếu không có hình ảnh được update thì kiểm tra Image Action
-				else if (request.ImageAction == ImageAction.Remove && !string.IsNullOrEmpty(existingAmentity.IconUrl))
+				else if (request.IconFile != null
+					 && request.ImageAction == ImageAction.Remove
+					 && !string.IsNullOrEmpty(existingAmentity.IconUrl))
+
 				{
 					oldIconPublicId = _cloudinaryService.GetPublicIdFromUrl(existingAmentity.IconUrl);
 					existingAmentity.IconUrl = null;

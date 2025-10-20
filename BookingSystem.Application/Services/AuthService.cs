@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using BookingSystem.Domain.Base;
 using BookingSystem.Application.Models.Responses;
 using AutoMapper;
+using BookingSystem.Domain.Repositories;
 
 namespace BookingSystem.Application.Services
 {
@@ -25,6 +26,8 @@ namespace BookingSystem.Application.Services
 		private readonly ILogger<AuthService> _logger;
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly IMapper _mapper;
+		private readonly IUserRepository _userRepository;
+		
 
 		public AuthService(
 			UserManager<User> userManager,
@@ -33,7 +36,8 @@ namespace BookingSystem.Application.Services
 			IOptions<AppSettings> appSettings,
 			ILogger<AuthService> logger,
 			IUnitOfWork unitOfWork,
-			IMapper mapper
+			IMapper mapper,
+			IUserRepository userRepository
 			)
 		{
 			_userManager = userManager;
@@ -43,6 +47,7 @@ namespace BookingSystem.Application.Services
 			_logger = logger;
 			_unitOfWork = unitOfWork;
 			_mapper = mapper;
+			_userRepository = userRepository;
 		}
 
 		public async Task<User> AdminLoginAsync(LoginRequest loginRequest)
@@ -85,7 +90,7 @@ namespace BookingSystem.Application.Services
 				_logger.LogError("Registration failed: Email {Email} already exists", request.Email);
 				throw new BadRequestException("Email already exists");
 			}
-				
+
 
 			var user = new User
 			{
@@ -100,6 +105,8 @@ namespace BookingSystem.Application.Services
 				Country = request.Country,
 				PhoneNumber = request.PhoneNumber,
 				CreatedAt = DateTime.UtcNow,
+				IsEmailConfirmed = false,
+				EmailConfirmed = false,
 				EmailConfirmationToken = GenerateSecureToken(),
 				EmailConfirmationTokenExpiry = DateTime.UtcNow.AddHours(24)
 			};
@@ -111,7 +118,7 @@ namespace BookingSystem.Application.Services
 				throw new BadRequestException($"Registration failed: {errors}");
 			}
 
-			await _userManager.AddToRoleAsync(user, SystemRoles.Admin.ToString());
+			await _userManager.AddToRoleAsync(user, SystemRoles.User.ToString());
 
 			// Gửi email xác nhận
 			var confirmationLink = $"{_appSettings.ClientUrl}/confirm-email?email={user.Email}&token={user.EmailConfirmationToken}";
@@ -187,30 +194,25 @@ namespace BookingSystem.Application.Services
 			if (user == null)
 				throw new NotFoundException("User not found.");
 
-			// Nếu user đã xác thực trước đó
+
 			if (user.EmailConfirmed || user.IsEmailConfirmed)
 				throw new BadRequestException("Email has already been verified. No further verification is needed.");
 
-			// Nếu token không khớp hoặc hết hạn
+
 			if (user.EmailConfirmationToken != token ||
 				user.EmailConfirmationTokenExpiry == null ||
 				user.EmailConfirmationTokenExpiry < DateTime.UtcNow)
 				throw new BadRequestException("Invalid or expired verification link.");
 
-			// Đánh dấu đã xác thực
+			
 			user.IsEmailConfirmed = true;
-			user.EmailConfirmed = true; // Identity property
+			user.EmailConfirmed = true; 
 			user.EmailConfirmationToken = null;
 			user.EmailConfirmationTokenExpiry = null;
 
-			var result = await _userManager.UpdateAsync(user);
 
-			if (!result.Succeeded)
-			{
-				var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-				throw new Exception($"Failed to update user verification status: {errors}");
-			}
-
+			_userRepository.Update(user);
+			await _userRepository.SaveChangesAsync();
 			// Gửi email chào mừng
 			await _emailService.SendWelcomeEmailAsync(user.Email!, user.FirstName ?? "User");
 			return true;

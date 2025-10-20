@@ -41,6 +41,8 @@ namespace BookingSystem.Application.DTOs.UserDTO
 
 		public bool? IsDeleted { get; set; }
 
+		public bool? IsLocked { get; set; }
+
 		public IList<string>? Roles { get; set; }
 	}
 }

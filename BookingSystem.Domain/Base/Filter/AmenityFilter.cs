@@ -2,11 +2,10 @@
 {
     public class AmenityFilter : PaginationFilter
 	{
-		public string? SearchTerm { get; set; }
+		public string? Search { get; set; }
 		public string? Category { get; set; }
-		public bool? IsPopular { get; set; }
 		public bool? IsActive { get; set; }
-		public string? SortBy { get; set; } = "name";
-		public string? SortDirection { get; set; } = "asc";
+		public string? SortBy { get; set; } = "createdAt";
+		public string? SortOrder { get; set; } = "asc";
 	}
 }

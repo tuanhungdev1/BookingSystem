@@ -16,6 +16,7 @@ namespace BookingSystem.Domain.Entities
 		public string? Avatar { get; set; }
 		public bool IsActive { get; set; } = true;
 		public bool IsDeleted { get; set; } = false;
+		public bool IsLocked { get; set; } = false;
 
 		public bool IsEmailConfirmed { get; set; }
 		public string? EmailConfirmationToken { get; set; }
@@ -46,7 +47,7 @@ namespace BookingSystem.Domain.Entities
 		public virtual ICollection<Review> ReceivedReviews { get; set; } = new List<Review>();
 		public virtual ICollection<WishlistItem> WishlistItems { get; set; } = new List<WishlistItem>();
 		public virtual ICollection<UserPreference> UserPreferences { get; set; } = new List<UserPreference>();
-
+		public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 		public string FullName => $"{FirstName} {LastName}";
 
 		public void VerifyEmail()

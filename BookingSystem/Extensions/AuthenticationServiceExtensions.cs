@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 using System.Text;
 
 namespace BookingSystem.Extensions
@@ -10,15 +12,27 @@ namespace BookingSystem.Extensions
 	{
 		public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
 		{
+
+			// 1. Thêm Cookie Authentication trước
+			services.ConfigureApplicationCookie(options =>
+			{
+				options.Cookie.Name = "BookingSystemAuth";
+				options.Cookie.HttpOnly = true;
+				options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+				options.Cookie.SameSite = SameSiteMode.Strict;
+				options.ExpireTimeSpan = TimeSpan.FromHours(1);
+				options.SlidingExpiration = true;
+				options.LoginPath = "/api/auth/login";
+				options.AccessDeniedPath = "/api/auth/access-denied";
+			});
 			services.AddAuthentication(options =>
 			{
 				options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
 				options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-				options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 			})
-			.AddJwtBearer(options =>
+		   .AddJwtBearer(options =>
 			{
-				options.SaveToken = true;
+				options.SaveToken = false;
 				options.RequireHttpsMetadata = false;
 				options.IncludeErrorDetails = true;  // Thêm để debug
 				options.MapInboundClaims = false;
@@ -35,16 +49,20 @@ namespace BookingSystem.Extensions
 					ClockSkew = TimeSpan.FromMinutes(2),
 					RequireExpirationTime = true,
 					RequireSignedTokens = true,
+					NameClaimType = ClaimTypes.Name,
+					RoleClaimType = ClaimTypes.Role,
 					ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 }
 				};
 
 				options.Events = new JwtBearerEvents
 				{
-					OnMessageReceived = context => {
+					OnMessageReceived = context =>
+					{
 						var token = context.Request.Cookies["accessToken"];
-						var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-						logger.LogDebug("Token from cookie: {Token}", token ?? "NULL");  // Check nếu token null hoặc empty
-						context.Token = token;
+						if (!string.IsNullOrEmpty(token))
+						{
+							context.Token = token;
+						}
 						return Task.CompletedTask;
 					},
 					OnAuthenticationFailed = context =>
@@ -53,24 +71,75 @@ namespace BookingSystem.Extensions
 						logger.LogError("Authentication failed: {Error}", context.Exception.Message);
 						return Task.CompletedTask;
 					},
-					OnTokenValidated = context => {
-						var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-						logger.LogDebug("Claims: {Claims}", string.Join(", ", context.Principal.Claims.Select(c => $"{c.Type}={c.Value}")));
+					OnTokenValidated = context =>
+					{
+						var roles = context.Principal?.FindAll(ClaimTypes.Role);
+						var logger = context.HttpContext.RequestServices
+							.GetRequiredService<ILogger<Program>>();
+						logger.LogInformation("✓ Token validated - User: {User}, Roles: {Roles}",
+							context.Principal?.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown",
+							string.Join(", ", roles?.Select(r => r.Value) ?? new List<string>()));
+						// ✅ THÊM DÒNG NÀY: Đảm bảo ClaimsIdentity nhận role claims đúng
+						if (context.Principal?.Identity is ClaimsIdentity identity)
+						{
+							var roles_list = context.Principal.FindAll(ClaimTypes.Role).ToList();
+							if (roles_list.Count > 0)
+							{
+								logger.LogDebug("Found {RoleCount} roles", roles_list.Count);
+							}
+						}
+
+
 						return Task.CompletedTask;
 					}
 				};
 			});
 
-			// Thêm policy hỗ trợ cả schemes
+			services.AddSingleton<IAuthorizationHandler, CustomRolesAuthorizationHandler>();
+
+			// 3. Cấu hình Authorization policy
 			services.AddAuthorization(options =>
 			{
-				var multiSchemePolicy = new AuthorizationPolicyBuilder(
-					IdentityConstants.ApplicationScheme,  // Cookie scheme từ Identity
+				// Default policy
+				options.DefaultPolicy = new AuthorizationPolicyBuilder(
 					JwtBearerDefaults.AuthenticationScheme)
 					.RequireAuthenticatedUser()
 					.Build();
-				options.DefaultPolicy = multiSchemePolicy;
+
+				// ✅ Admin Policy - SỬ DỤNG RequireRole, KHÔNG dùng RequireClaim
+				options.AddPolicy("Admin", policy =>
+				{
+					policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+					policy.RequireAuthenticatedUser();
+					policy.RequireRole("Admin");  // ✅ ĐÚNG
+				});
+
+				// ✅ Host Policy
+				options.AddPolicy("Host", policy =>
+				{
+					policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+					policy.RequireAuthenticatedUser();
+					policy.RequireRole("Host");
+				});
+
+				// ✅ User Policy
+				options.AddPolicy("User", policy =>
+				{
+					policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+					policy.RequireAuthenticatedUser();
+					policy.RequireRole("User");
+				});
+
+				// ✅ AdminOrHost Policy
+				options.AddPolicy("AdminOrHost", policy =>
+				{
+					policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+					policy.RequireAuthenticatedUser();
+					policy.RequireRole("Admin", "Host");
+				});
 			});
+
+
 
 			return services;
 		}

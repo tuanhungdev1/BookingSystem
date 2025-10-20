@@ -4,6 +4,7 @@ using BookingSystem.Domain.Entities;
 using BookingSystem.Domain.Repositories;
 using BookingSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace BookingSystem.Infrastructure.Repositories
 {
@@ -22,39 +23,95 @@ namespace BookingSystem.Infrastructure.Repositories
 
 		public async Task<PagedResult<User>> GetPagedAsync(UserFilter filter)
 		{
-			var query = _dbSet.AsQueryable();
+			var query = _dbSet
+				.Include(u => u.UserRoles)
+				.ThenInclude(ur => ur.Role)
+				.AsQueryable();
 
-			if (!string.IsNullOrEmpty(filter.SearchTerm))
+			// Text Search
+			if (!string.IsNullOrEmpty(filter.Search))
 			{
-				var searchTerm = filter.SearchTerm.ToLower();
+				var searchTerm = filter.Search.ToLower();
 				query = query.Where(a => a.FirstName.ToLower().Contains(searchTerm) ||
 										 a.LastName.ToLower().Contains(searchTerm) ||
 										 a.Email.ToLower().Contains(searchTerm) ||
-										 a.UserName.ToLower().Contains(searchTerm)
-										 ); 
+										 a.UserName.ToLower().Contains(searchTerm) ||
+										 (a.FirstName + " " + a.LastName).ToLower().Contains(searchTerm)
+										 )
+					;
 			}
 
-			if (filter.IsActive.HasValue)
+			// Status Filters - Parse string to bool if not "all"
+			if (!string.IsNullOrEmpty(filter.IsActive) && filter.IsActive != "all")
 			{
-				query = query.Where(a => a.IsActive == filter.IsActive.Value);
+				bool isActive = bool.Parse(filter.IsActive);
+				query = query.Where(a => a.IsActive == isActive);
 			}
+
+			if (!string.IsNullOrEmpty(filter.IsLocked) && filter.IsLocked != "all")
+			{
+				bool isLocked = bool.Parse(filter.IsLocked);
+				query = query.Where(a => a.IsLocked == isLocked);
+			}
+
+			if (!string.IsNullOrEmpty(filter.IsEmailConfirmed) && filter.IsEmailConfirmed != "all")
+			{
+				bool isEmailConfirmed = bool.Parse(filter.IsEmailConfirmed);
+				query = query.Where(a => a.IsEmailConfirmed == isEmailConfirmed);
+			}
+
+			// UserRepository.cs
+			if (filter.Roles != null && filter.Roles.Length > 0)
+			{
+				// Normalize input roles to uppercase
+				var normalizedRoles = filter.Roles
+					.Select(r => r.ToUpper())
+					.ToList();
+
+				query = query.Where(u => u.UserRoles
+					.Any(ur => normalizedRoles.Contains(ur.Role.NormalizedName)));
+				// Sử dụng NormalizedName thay vì Name
+			}
+
+			// Date Range Filters - Parse ISO strings to DateTime
+			if (!string.IsNullOrEmpty(filter.CreatedAtFrom))
+			{
+				if (DateTime.TryParse(filter.CreatedAtFrom, out DateTime createdFrom))
+				{
+					query = query.Where(a => a.CreatedAt >= createdFrom);
+				}
+			}
+
+			if (!string.IsNullOrEmpty(filter.CreatedAtTo))
+			{
+				if (DateTime.TryParse(filter.CreatedAtTo, out DateTime createdTo))
+				{
+					query = query.Where(a => a.CreatedAt <= createdTo);
+				}
+			}
+
+			query = query.Where(u => !u.IsDeleted);
 
 			// Apply sorting (case-insensitive for strings)
 			query = filter.SortBy?.ToLower() switch
 			{
-				"name" => filter.SortDirection == "desc"
-					? query.OrderByDescending(a => (a.FirstName + " " + a.LastName).ToLower())
-					: query.OrderBy(a => (a.FirstName + " " + a.LastName).ToLower()),
+				"username" => filter.SortOrder == "desc"
+					? query.OrderByDescending(a => a.UserName.ToLower())
+					: query.OrderBy(a => a.UserName.ToLower()),
 
-				"email" => filter.SortDirection == "desc"
+				"email" => filter.SortOrder == "desc"
 					? query.OrderByDescending(a => a.Email.ToLower())
 					: query.OrderBy(a => a.Email.ToLower()),
 
-				"createdat" => filter.SortDirection == "desc"
+				"fullname" => filter.SortOrder == "desc"
+					? query.OrderByDescending(a => (a.FirstName + " " + a.LastName).ToLower())
+					: query.OrderBy(a => (a.FirstName + " " + a.LastName).ToLower()),
+
+				"createdat" => filter.SortOrder == "desc"
 					? query.OrderByDescending(a => a.CreatedAt)
 					: query.OrderBy(a => a.CreatedAt),
 
-				_ => query.OrderBy(a => a.Email.ToLower()) // default sort by Email
+				_ => query.OrderBy(a => a.UserName.ToLower()) // default sort by UserName
 			};
 
 			var totalCount = await query.CountAsync();

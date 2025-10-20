@@ -3,9 +3,10 @@ using BookingSystem.Application.Mappings;
 using BookingSystem.Extensions;
 using BookingSystem.Infrastructure.DI;
 using Serilog;
+using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
-
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 // Configure Serilog
 builder.Host.UseSerilog((context, configuration) =>
 	configuration.ReadFrom.Configuration(context.Configuration));

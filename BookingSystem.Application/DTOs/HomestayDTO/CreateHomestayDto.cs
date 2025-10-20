@@ -1,4 +1,5 @@
-﻿using BookingSystem.Application.DTOs.HomestayAmenityDTO;
+﻿using BookingSystem.Application.DTOs.AvailabilityCalendarDTO;
+using BookingSystem.Application.DTOs.HomestayAmenityDTO;
 using BookingSystem.Application.DTOs.HomestayImageDTO;
 using BookingSystem.Application.DTOs.HomestayRuleDTO;
 using System.ComponentModel.DataAnnotations;
@@ -99,5 +100,6 @@ namespace BookingSystem.Application.DTOs.AccommodationDTO
 		public List<CreateHomestayAmenityDto> Amenities { get; set; } = new List<CreateHomestayAmenityDto>();
 
 		public List<CreateHomestayRuleDto> Rules { get; set; } = new List<CreateHomestayRuleDto>();
+		public List<CreateAvailabilityCalendarDto> AvailabilityCalendars { get; set; } = new List<CreateAvailabilityCalendarDto>();
 	}
 }
