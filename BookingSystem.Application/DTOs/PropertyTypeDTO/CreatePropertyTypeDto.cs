@@ -13,7 +13,7 @@ namespace BookingSystem.Application.DTOs.PropertyTypeDTO
 		[MaxLength(500, ErrorMessage = "Description cannot exceed 500 characters")]
 		public string? Description { get; set; }
 
-		public FormFile? IconFile { get; set; }
+		public IFormFile? IconFile { get; set; }
 
 		public bool IsActive { get; set; } = true;
 

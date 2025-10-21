@@ -42,7 +42,7 @@ namespace BookingSystem.Application.Services
 			return new PagedResult<PropertyTypeDto>
 			{
 				Items = propertyTypeDtos,
-				TotalCount = propertyTypeDtos.Count,
+				TotalCount = propertyTypes.TotalCount,
 				PageNumber = propertyTypes.PageNumber,
 				PageSize = propertyTypes.PageSize,
 				TotalPages = propertyTypes.TotalPages
@@ -64,45 +64,47 @@ namespace BookingSystem.Application.Services
 
 		public async Task<PropertyTypeDto> CreateAsync(CreatePropertyTypeDto request)
 		{
-			// Tạo biến để lưu PUBLIC ID của hình ảnh đã upload
-			var uploadedPublicId = String.Empty;
+			var uploadedPublicId = string.Empty;
 			var newPropertyType = _mapper.Map<Domain.Entities.PropertyType>(request);
+
 			try
 			{
-				// Thêm entity mới vào repository để lấy ID
+				// Bước 1: Thêm mới entity
 				await _propertyTypeRepository.AddAsync(newPropertyType);
+				await _propertyTypeRepository.SaveChangesAsync(); // ✅ để DB sinh Id
 
-				// Kiểm tra có tạo hình ảnh hay không
+				// Bước 2: Nếu có upload ảnh thì upload
 				if (request.IconFile != null)
 				{
-					// Tạo Object ImageUploadDto
 					var imageUploadDto = new ImageUploadDto
 					{
 						File = request.IconFile,
-						Folder = $"{FolderImages.Properties}/{newPropertyType.TypeName}_{newPropertyType.Id}",
+						Folder = $"{FolderImages.Properties}/{newPropertyType.Id}",
 					};
+
 					var uploadResult = await _cloudinaryService.UploadImageAsync(imageUploadDto);
 					if (!uploadResult.Success)
 					{
 						_logger.LogError("Failed to upload image to Cloudinary: {ErrorMessage}", uploadResult.ErrorMessage);
 						throw new BadRequestException("Failed to upload image to Cloudinary");
 					}
+
 					newPropertyType.IconUrl = uploadResult.Data.Url;
 					uploadedPublicId = uploadResult.Data.PublicId;
+
 					_logger.LogInformation("Successfully uploaded image to Cloudinary for PropertyType: {PublicId}", uploadResult.Data.PublicId);
+
+					// ✅ Cập nhật lại iconUrl
+					_propertyTypeRepository.Update(newPropertyType);
+					await _propertyTypeRepository.SaveChangesAsync(); // Chỉ cần Save lại, không cần Update
 				}
 
-				// Lưu thay đổi vào database
-				await _propertyTypeRepository.SaveChangesAsync();
 				_logger.LogInformation("Successfully created property type with ID {PropertyTypeId}.", newPropertyType.Id);
 
-				// Trả về DTO
 				return _mapper.Map<PropertyTypeDto>(newPropertyType);
 			}
 			catch (Exception ex)
 			{
-
-				// Nếu có lỗi xảy ra và đã upload hình ảnh, xóa hình ảnh đó khỏi Cloudinary để tránh rác
 				if (!string.IsNullOrEmpty(uploadedPublicId))
 				{
 					var deleteResult = await _cloudinaryService.DeleteImageAsync(uploadedPublicId);
@@ -115,10 +117,12 @@ namespace BookingSystem.Application.Services
 						_logger.LogError("Failed to roll back uploaded image from Cloudinary: {PublicId}, Error: {ErrorMessage}", uploadedPublicId, deleteResult.ErrorMessage);
 					}
 				}
+
 				_logger.LogError(ex, "Error occurred while creating property type.");
 				throw;
 			}
 		}
+
 
 		public async Task<PropertyTypeDto?> UpdateAsync(int id, UpdatePropertyTypeDto request)
 		{
@@ -128,12 +132,15 @@ namespace BookingSystem.Application.Services
 				_logger.LogWarning("Property type with ID {PropertyTypeId} not found.", id);
 				throw new NotFoundException($"Property type with ID {id} not found.");
 			}
+
+			var currentImageUrl = existingPropertyType.IconUrl;
 			var oldIconPublicId = String.Empty;
 			var newIconPublicId = String.Empty;
 			try
 			{
 				// Cập nhật các trường thông tin
 				_mapper.Map(request, existingPropertyType);
+				existingPropertyType.IconUrl = currentImageUrl;
 
 				if (request.IconFile != null)
 				{

@@ -62,8 +62,10 @@ namespace BookingSystem.Application.Mappings
 
 		public void ConfigurePropertyTypeMappings()
 		{
-			CreateMap<CreatePropertyTypeDto, PropertyType>();
-			CreateMap<UpdateHomestayDto, PropertyType>();
+			CreateMap<CreatePropertyTypeDto, PropertyType>()
+				.ForMember(dest => dest.Id, opt => opt.Ignore());
+			CreateMap<UpdatePropertyTypeDto, PropertyType>()
+				.ForMember(dest => dest.Id, opt => opt.Ignore());
 			CreateMap<PropertyType, PropertyTypeDto>();
 		}
 

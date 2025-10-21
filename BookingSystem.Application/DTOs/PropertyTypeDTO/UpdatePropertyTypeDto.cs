@@ -5,8 +5,6 @@ namespace BookingSystem.Application.DTOs.PropertyTypeDTO
 {
 	public class UpdatePropertyTypeDto
 	{
-		public int Id { get; set; }
-
 		public string? TypeName { get; set; }
 
 		public string? Description { get; set; }
