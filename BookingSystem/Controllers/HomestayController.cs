@@ -1,7 +1,10 @@
-﻿using BookingSystem.Application.Contracts;
+﻿// BookingSystem.Controllers/HomestayController.cs
+using BookingSystem.Application.Contracts;
 using BookingSystem.Application.DTOs.AccommodationDTO;
 using BookingSystem.Application.DTOs.AccommodationDTO.BookingSystem.Application.DTOs;
+using BookingSystem.Application.DTOs.HomestayAmenityDTO;
 using BookingSystem.Application.DTOs.HomestayImageDTO;
+using BookingSystem.Application.DTOs.HomestayRuleDTO;
 using BookingSystem.Application.Models.Responses;
 using BookingSystem.Domain.Base;
 using BookingSystem.Domain.Base.Filter;
@@ -13,7 +16,7 @@ namespace BookingSystem.Controllers
 {
 	[ApiController]
 	[Route("api/[controller]")]
-	[Authorize] // Require authentication for all endpoints
+	[Authorize]
 	public class HomestayController : ControllerBase
 	{
 		private readonly IHomestayService _homestayService;
@@ -23,11 +26,13 @@ namespace BookingSystem.Controllers
 			_homestayService = homestayService;
 		}
 
+		#region Query Endpoints
+
 		/// <summary>
 		/// Lấy thông tin homestay theo ID
 		/// </summary>
 		[HttpGet("{id:int}")]
-		[AllowAnonymous] // Cho phép guest xem thông tin homestay
+		[AllowAnonymous]
 		public async Task<ActionResult<ApiResponse<HomestayDto>>> GetById(int id)
 		{
 			var homestay = await _homestayService.GetByIdAsync(id);
@@ -52,7 +57,7 @@ namespace BookingSystem.Controllers
 		/// Lấy danh sách homestay có phân trang và filter
 		/// </summary>
 		[HttpGet]
-		[AllowAnonymous] // Cho phép guest xem danh sách homestay
+		[AllowAnonymous]
 		public async Task<ActionResult<ApiResponse<PagedResult<HomestayDto>>>> GetAll([FromQuery] HomestayFilter filter)
 		{
 			var homestays = await _homestayService.GetAllHomestayAsync(filter);
@@ -64,6 +69,10 @@ namespace BookingSystem.Controllers
 			});
 		}
 
+		#endregion
+
+		#region Command Endpoints - Basic CRUD
+
 		/// <summary>
 		/// Tạo mới homestay (Host và Admin)
 		/// </summary>
@@ -71,7 +80,6 @@ namespace BookingSystem.Controllers
 		[Authorize(Roles = "Host,Admin")]
 		public async Task<ActionResult<ApiResponse<HomestayDto>>> Create([FromForm] CreateHomestayDto request)
 		{
-			// Lấy UserId từ Claims
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
 			{
@@ -100,10 +108,9 @@ namespace BookingSystem.Controllers
 		/// Cập nhật thông tin homestay (Owner hoặc Admin)
 		/// </summary>
 		[HttpPut("{id:int}")]
-		[Authorize(Roles = "Host, Admin")]
+		[Authorize(Roles = "Host,Admin")]
 		public async Task<ActionResult<ApiResponse<HomestayDto>>> Update(int id, [FromForm] UpdateHomestayDto request)
 		{
-			// Lấy UserId từ Claims
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
 			{
@@ -133,41 +140,6 @@ namespace BookingSystem.Controllers
 		}
 
 		/// <summary>
-		/// Cập nhật hình ảnh homestay (Owner hoặc Admin)
-		/// </summary>
-		[HttpPut("{id:int}/images")]
-		[Authorize(Roles = "Host,Admin")]
-		public async Task<ActionResult<ApiResponse<object>>> UpdateImages(int id, [FromForm] UpdateHomestayImagesDto request)
-		{
-			// Lấy UserId từ Claims
-			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-			{
-				return Unauthorized(new ApiResponse<object>
-				{
-					Success = false,
-					Message = "Invalid user authentication"
-				});
-			}
-
-			var success = await _homestayService.UpdateHomestayImages(id, userId, request);
-			if (!success)
-			{
-				return BadRequest(new ApiResponse<object>
-				{
-					Success = false,
-					Message = "Failed to update homestay images"
-				});
-			}
-
-			return Ok(new ApiResponse<object>
-			{
-				Success = true,
-				Message = "Homestay images updated successfully"
-			});
-		}
-
-		/// <summary>
 		/// Xóa homestay (Admin only)
 		/// </summary>
 		[HttpDelete("{id:int}")]
@@ -191,6 +163,10 @@ namespace BookingSystem.Controllers
 			});
 		}
 
+		#endregion
+
+		#region Command Endpoints - Status Management
+
 		/// <summary>
 		/// Kích hoạt homestay (Owner hoặc Admin)
 		/// </summary>
@@ -198,7 +174,6 @@ namespace BookingSystem.Controllers
 		[Authorize(Roles = "Host,Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> Activate(int id)
 		{
-			// Lấy UserId từ Claims
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
 			{
@@ -233,7 +208,6 @@ namespace BookingSystem.Controllers
 		[Authorize(Roles = "Host,Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> Deactivate(int id)
 		{
-			// Lấy UserId từ Claims
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
 			{
@@ -263,13 +237,11 @@ namespace BookingSystem.Controllers
 
 		/// <summary>
 		/// Thay đổi trạng thái active của homestay (Owner hoặc Admin)
-		/// Alternative endpoint để toggle status
 		/// </summary>
 		[HttpPut("{id:int}/status")]
 		[Authorize(Roles = "Host,Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> SetActiveStatus(int id, [FromBody] bool isActive)
 		{
-			// Lấy UserId từ Claims
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
 			{
@@ -299,5 +271,125 @@ namespace BookingSystem.Controllers
 				Message = $"Homestay status set to {(isActive ? "active" : "inactive")} successfully"
 			});
 		}
+
+		#endregion
+
+		#region Command Endpoints - Image Management
+
+		/// <summary>
+		/// Cập nhật hình ảnh homestay (Owner hoặc Admin)
+		/// </summary>
+		[HttpPut("{id:int}/images")]
+		[Authorize(Roles = "Host,Admin")]
+		public async Task<ActionResult<ApiResponse<object>>> UpdateImages(int id, [FromForm] UpdateHomestayImagesDto request)
+		{
+			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+			{
+				return Unauthorized(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Invalid user authentication"
+				});
+			}
+
+			var success = await _homestayService.UpdateHomestayImages(id, userId, request);
+			if (!success)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Failed to update homestay images"
+				});
+			}
+
+			return Ok(new ApiResponse<object>
+			{
+				Success = true,
+				Message = "Homestay images updated successfully"
+			});
+		}
+
+		#endregion
+
+		#region Command Endpoints - Amenities Management
+
+		/// <summary>
+		/// Cập nhật danh sách Amenities cho homestay (Owner hoặc Admin)
+		/// </summary>
+		[HttpPut("{id:int}/amenities")]
+		[Authorize(Roles = "Host,Admin")]
+		public async Task<ActionResult<ApiResponse<object>>> UpdateAmenities(
+			int id,
+			[FromBody] List<CreateHomestayAmenityDto> amenities)
+		{
+			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+			{
+				return Unauthorized(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Invalid user authentication"
+				});
+			}
+
+			var success = await _homestayService.UpdateHomestayAmenitiesAsync(id, userId, amenities);
+			if (!success)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Failed to update homestay amenities"
+				});
+			}
+
+			return Ok(new ApiResponse<object>
+			{
+				Success = true,
+				Message = "Homestay amenities updated successfully"
+			});
+		}
+
+		#endregion
+
+		#region Command Endpoints - Rules Management
+
+		/// <summary>
+		/// Cập nhật danh sách Rules cho homestay (Owner hoặc Admin)
+		/// </summary>
+		[HttpPut("{id:int}/rules")]
+		[Authorize(Roles = "Host,Admin")]
+		public async Task<ActionResult<ApiResponse<object>>> UpdateRules(
+			int id,
+			[FromBody] List<CreateHomestayRuleDto> rules)
+		{
+			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+			{
+				return Unauthorized(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Invalid user authentication"
+				});
+			}
+
+			var success = await _homestayService.UpdateHomestayRulesAsync(id, userId, rules);
+			if (!success)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Failed to update homestay rules"
+				});
+			}
+
+			return Ok(new ApiResponse<object>
+			{
+				Success = true,
+				Message = "Homestay rules updated successfully"
+			});
+		}
+
+		#endregion
 	}
 }

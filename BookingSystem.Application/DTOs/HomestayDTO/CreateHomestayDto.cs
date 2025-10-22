@@ -59,10 +59,10 @@ namespace BookingSystem.Application.DTOs.AccommodationDTO
 		public int NumberOfBeds { get; set; }
 
 		[Required(ErrorMessage = "Base nightly price is required.")]
-		[Range(0, 1000000, ErrorMessage = "Base nightly price must be greater than 0.")]
+		[Range(0, 1000000000, ErrorMessage = "Base nightly price must be greater than 0.")]
 		public decimal BaseNightlyPrice { get; set; }
 
-		[Range(0, 1000000, ErrorMessage = "Weekend price must be greater than or equal to 0.")]
+		[Range(0, 1000000000, ErrorMessage = "Weekend price must be greater than or equal to 0.")]
 		public decimal? WeekendPrice { get; set; }
 
 		[Range(0, 100, ErrorMessage = "Weekly discount must be between 0% and 100%.")]
@@ -96,9 +96,7 @@ namespace BookingSystem.Application.DTOs.AccommodationDTO
 		[Required(ErrorMessage = "At least one image is required.")]
 		[MinLength(1, ErrorMessage = "At least one image is required.")]
 		public List<CreateHomestayImageDto> Images { get; set; } = new List<CreateHomestayImageDto>();
-
 		public List<CreateHomestayAmenityDto> Amenities { get; set; } = new List<CreateHomestayAmenityDto>();
-
 		public List<CreateHomestayRuleDto> Rules { get; set; } = new List<CreateHomestayRuleDto>();
 		public List<CreateAvailabilityCalendarDto> AvailabilityCalendars { get; set; } = new List<CreateAvailabilityCalendarDto>();
 	}

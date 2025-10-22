@@ -1,4 +1,6 @@
-﻿namespace BookingSystem.Application.DTOs.HostProfileDTO
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace BookingSystem.Application.DTOs.HostProfileDTO
 {
 	public class HostProfileDto
 	{
@@ -43,5 +45,15 @@
 		// Thông tin bổ sung
 		public string? ApplicantNote { get; set; }
 		public DateTime SubmittedAt { get; set; }
+		public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+		public DateTime? UpdatedAt { get; set; }
+
+		public bool IsDeleted { get; set; } = false;
+
+		public DateTime? DeletedAt { get; set; }
+		public string? CreatedBy { get; set; }
+		public string? UpdatedBy { get; set; }
+		public string? DeletedBy { get; set; }
 	}
 }

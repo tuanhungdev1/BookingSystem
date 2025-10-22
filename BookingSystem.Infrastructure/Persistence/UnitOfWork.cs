@@ -110,6 +110,39 @@ namespace BookingSystem.Infrastructure.Persistence
 			}
 		}
 
+		#region Transaction (Safe for ExecutionStrategy)
+		/// <summary>
+		/// Thực thi logic nghiệp vụ trong transaction an toàn với ExecutionStrategy (retry).
+		/// </summary>
+		public async Task ExecuteInTransactionAsync(Func<Task> action)
+		{
+			if (action == null)
+				throw new ArgumentNullException(nameof(action));
+
+			// ✅ Phải dùng ExecutionStrategy nếu đã enable globally
+			var strategy = _context.Database.CreateExecutionStrategy();
+
+			await strategy.ExecuteAsync(async () =>
+			{
+				// ✅ THÊM: Clear ChangeTracker để tránh tracked entities
+				_context.ChangeTracker.Clear();
+
+				await using var transaction = await _context.Database.BeginTransactionAsync();
+				try
+				{
+					await action();
+					await _context.SaveChangesAsync();
+					await transaction.CommitAsync();
+				}
+				catch
+				{
+					await transaction.RollbackAsync();
+					throw;
+				}
+			});
+		}
+		#endregion
+
 		private async Task DisposeTransactionAsync()
 		{
 			if (_transaction != null)

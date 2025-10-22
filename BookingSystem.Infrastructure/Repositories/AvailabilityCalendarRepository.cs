@@ -199,6 +199,25 @@ namespace BookingSystem.Infrastructure.Repositories
 			return await _dbSet.AnyAsync(ac => ac.HomestayId == homestayId && ac.AvailableDate == date);
 		}
 
+		public async Task<List<DateOnly>> GetExistingDatesAsync(int homestayId, List<DateOnly> dates)
+		{
+			if (dates == null || dates.Count == 0)
+				return new List<DateOnly>();
+
+			// Chuẩn hóa danh sách ngày (loại bỏ trùng lặp)
+			var normalizedDates = dates.Distinct().ToList();
+
+			// Truy vấn các ngày đã tồn tại trong DB
+			return await _context.AvailabilityCalendars
+				.AsNoTracking()
+				.Where(ac => ac.HomestayId == homestayId && !ac.IsDeleted &&
+							 normalizedDates.Contains(ac.AvailableDate))
+				.Select(ac => ac.AvailableDate)
+				.Distinct()
+				.ToListAsync();
+		}
+
+
 		public async Task DeleteByDateRangeAsync(int homestayId, DateOnly startDate, DateOnly endDate)
 		{
 			var calendarsToDelete = await _dbSet

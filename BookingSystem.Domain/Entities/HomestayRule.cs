@@ -1,8 +1,9 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BookingSystem.Domain.Base;
+using System.ComponentModel.DataAnnotations;
 
 namespace BookingSystem.Domain.Entities
 {
-	public class HomestayRule
+	public class HomestayRule : BaseEntity
 	{
 		public int HomestayId { get; set; }
 		public int RuleId { get; set; }

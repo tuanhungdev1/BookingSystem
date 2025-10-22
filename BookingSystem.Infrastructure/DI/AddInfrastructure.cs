@@ -15,7 +15,7 @@ namespace BookingSystem.Infrastructure.DI
 				options.UseSqlServer(connectionString, b =>
 				{
 					b.MigrationsAssembly("BookingSystem.Infrastructure");
-					b.EnableRetryOnFailure();
+					//b.EnableRetryOnFailure();
 				}));
 
 			return services;

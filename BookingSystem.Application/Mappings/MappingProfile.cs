@@ -2,7 +2,9 @@
 using BookingSystem.Application.DTOs.AccommodationDTO;
 using BookingSystem.Application.DTOs.AccommodationDTO.BookingSystem.Application.DTOs;
 using BookingSystem.Application.DTOs.AmenityDTO;
+using BookingSystem.Application.DTOs.AvailabilityCalendarDTO;
 using BookingSystem.Application.DTOs.BookingDTO;
+using BookingSystem.Application.DTOs.HomestayDTO;
 using BookingSystem.Application.DTOs.HomestayImageDTO;
 using BookingSystem.Application.DTOs.HostProfileDTO;
 using BookingSystem.Application.DTOs.PaymentDTO;
@@ -31,6 +33,7 @@ namespace BookingSystem.Application.Mappings
 			ConfigureReviewMapping();
 			ConfigureUserPreferenceMapping();
 			ConfigureAmenitiesMappings();
+			ConfigureAvailabilityCalendarMappings();
 		}
 
 		private void ConfigureUserMappings()
@@ -44,11 +47,104 @@ namespace BookingSystem.Application.Mappings
 				.ForMember(dest => dest.Id, opt => opt.Ignore());
 		}
 
+		private void ConfigureAvailabilityCalendarMappings()
+		{
+			CreateMap<AvailabilityCalendar, AvailabilityCalendarDto>();
+			CreateMap<CreateAvailabilityCalendarDto, AvailabilityCalendar>()
+				.ForMember(dest => dest.Id, opt => opt.Ignore());
+			CreateMap<UpdateAvailabilityCalendarDto, AvailabilityCalendar>()
+				.ForMember(dest => dest.Id, opt => opt.Ignore());
+		}
+
 		public void ConfigureHomestayMappings()
 		{
-			CreateMap<CreateHomestayDto, Homestay>();
-			CreateMap<UpdateHomestayDto, Homestay>();
-			CreateMap<Homestay, HomestayDto>();
+			CreateMap<CreateHomestayDto, Homestay>()
+				.ForMember(dest => dest.Id, opt => opt.Ignore());
+			CreateMap<UpdateHomestayDto, Homestay>()
+				.ForMember(dest => dest.Id, opt => opt.Ignore()); ;
+			// Main Homestay -> HomestayDto mapping (TỐI ƯU HÓA)
+			CreateMap<Homestay, HomestayDto>()
+				// Basic Info
+				.ForMember(dest => dest.MainImageUrl, opt => opt.MapFrom(src =>
+					src.HomestayImages
+						.Where(img => !img.IsDeleted)
+						.OrderBy(img => img.DisplayOrder)
+						.FirstOrDefault() != null
+							? src.HomestayImages
+								.Where(img => !img.IsDeleted)
+								.OrderBy(img => img.DisplayOrder)
+								.FirstOrDefault()!.ImageUrl
+							: null))
+
+				// Owner Info
+				.ForMember(dest => dest.OwnerName, opt => opt.MapFrom(src =>
+					$"{src.Owner.FirstName} {src.Owner.LastName}"))
+				.ForMember(dest => dest.OwnerPhone, opt => opt.MapFrom(src =>
+					src.Owner.PhoneNumber))
+				.ForMember(dest => dest.OwnerEmail, opt => opt.MapFrom(src =>
+					src.Owner.Email))
+				.ForMember(dest => dest.OwnerAvatar, opt => opt.MapFrom(src =>
+					src.Owner.Avatar))
+
+				// Property Type Info
+				.ForMember(dest => dest.PropertyTypeName, opt => opt.MapFrom(src =>
+					src.PropertyType.TypeName))
+				.ForMember(dest => dest.PropertyTypeIcon, opt => opt.MapFrom(src =>
+					src.PropertyType.IconUrl))
+
+				// Images
+				.ForMember(dest => dest.Images, opt => opt.MapFrom(src =>
+					src.HomestayImages.Where(img => !img.IsDeleted).OrderBy(img => img.DisplayOrder)))
+
+				// Amenities - CHỈ LẤY THÔNG TIN AMENITY, KHÔNG LẤY BẢNG TRUNG GIAN
+				.ForMember(dest => dest.Amenities, opt => opt.MapFrom(src =>
+					src.HomestayAmenities
+						.Where(ha => ha.Amenity.IsActive)
+						.OrderBy(ha => ha.Amenity.DisplayOrder)
+						.Select(ha => new AmenitySimpleDto
+						{
+							Id = ha.Amenity.Id,
+							AmenityName = ha.Amenity.AmenityName,
+							AmenityDescription = ha.Amenity.AmenityDescription,
+							IconUrl = ha.Amenity.IconUrl,
+							Category = ha.Amenity.Category,
+							DisplayOrder = ha.Amenity.DisplayOrder,
+							CustomNote = ha.CustomNote
+						})))
+
+				// Rules - CHỈ LẤY THÔNG TIN RULE, KHÔNG LẤY BẢNG TRUNG GIAN
+				.ForMember(dest => dest.Rules, opt => opt.MapFrom(src =>
+					src.HomestayRules
+						.Where(hr => hr.Rule.IsActive)
+						.OrderBy(hr => hr.Rule.DisplayOrder)
+						.Select(hr => new RuleSimpleDto
+						{
+							Id = hr.Rule.Id,
+							RuleName = hr.Rule.RuleName,
+							RuleDescription = hr.Rule.RuleDescription,
+							IconUrl = hr.Rule.IconUrl,
+							RuleType = hr.Rule.RuleType,
+							DisplayOrder = hr.Rule.DisplayOrder,
+							CustomNote = hr.CustomNote
+						})))
+
+				// Availability Calendars
+				.ForMember(dest => dest.AvailabilityCalendars, opt => opt.MapFrom(src =>
+					src.AvailabilityCalendars.Where(ac => !ac.IsDeleted)))
+
+				// Statistics
+				//.ForMember(dest => dest.AverageRating, opt => opt.MapFrom(src =>
+				//	src.Reviews.Any() ? src.Reviews.Average(r => r.Rating) : 0))
+				.ForMember(dest => dest.TotalReviews, opt => opt.MapFrom(src =>
+					src.Reviews.Count));
+		
+
+			// Mapping cho AvailabilityCalendar
+			CreateMap<AvailabilityCalendar, AvailabilityCalendarDto>()
+				.ForMember(dest => dest.HomestayTitle, opt => opt.MapFrom(src =>
+					src.Homestay.HomestayTitle))
+				.ForMember(dest => dest.BaseNightlyPrice, opt => opt.MapFrom(src =>
+					src.Homestay.BaseNightlyPrice));
 		}
 
 		public void ConfigureAmenitiesMappings()
@@ -58,6 +154,12 @@ namespace BookingSystem.Application.Mappings
 			CreateMap<UpdateAmenityDto, Amenity>()
 				.ForMember(dest => dest.Id, opt => opt.Ignore());
 			CreateMap<Amenity, AmenityDto>();
+
+			// Mapping cho bảng trung gian (chỉ dùng khi cần chi tiết)
+			CreateMap<HomestayAmenity, HomestayAmenityDto>()
+				.ForMember(dest => dest.Amenity, opt => opt.MapFrom(src => src.Amenity));
+
+			// Mapping cho AmenitySimpleDto (đã xử lý trực tiếp trong HomestayDto mapping)
 		}
 
 		public void ConfigurePropertyTypeMappings()
@@ -80,15 +182,20 @@ namespace BookingSystem.Application.Mappings
 		{
 			CreateMap<CreateHomestayImageDto, HomestayImage>();
 			CreateMap<ImageMetadataDto, HomestayImage>();
+
+			// Thêm mapping cho HomestayImage sang DTO
+			CreateMap<HomestayImage, HomestayImageDto>();
 		}
 
 		public void ConfigureRuleMapping()
 		{
 			CreateMap<CreateRuleDto, Rule>();
-
 			CreateMap<UpdateRuleDto, Rule>();
-
 			CreateMap<Rule, RuleDto>();
+
+			// Thêm mapping cho HomestayRule
+			CreateMap<HomestayRule, HomestayRuleDto>()
+				.ForMember(dest => dest.Rule, opt => opt.MapFrom(src => src.Rule));
 		}
 
 		public void ConfigureUserPreferenceMapping()
@@ -133,22 +240,6 @@ namespace BookingSystem.Application.Mappings
 					(src.BookingStatus == BookingStatus.CheckedOut || src.BookingStatus == BookingStatus.Completed)))
 				.ForMember(dest => dest.HasReviewed, opt => opt.MapFrom(src =>
 					src.Reviews.Any(r => r.ReviewerId == src.GuestId)));
-
-			CreateMap<Homestay, BookingHomestayDto>()
-				.ForMember(dest => dest.MainImageUrl, opt => opt.MapFrom(src =>
-					src.HomestayImages.OrderBy(img => img.DisplayOrder).FirstOrDefault() != null
-						? src.HomestayImages.OrderBy(img => img.DisplayOrder).FirstOrDefault()!.ImageUrl
-						: null))
-				.ForMember(dest => dest.PropertyTypeName, opt => opt.MapFrom(src =>
-					src.PropertyType.TypeName))
-				.ForMember(dest => dest.OwnerName, opt => opt.MapFrom(src =>
-					src.Owner.FirstName + " " + src.Owner.LastName))
-				.ForMember(dest => dest.OwnerPhone, opt => opt.MapFrom(src =>
-					src.Owner.PhoneNumber))
-				.ForMember(dest => dest.OwnerEmail, opt => opt.MapFrom(src =>
-					src.Owner.Email))
-				.ForMember(dest => dest.OwnerAvatar, opt => opt.MapFrom(src =>
-					src.Owner.Avatar));
 
 			CreateMap<Payment, PaymentDto>()
 				.ForMember(dest => dest.PaymentMethodDisplay, opt => opt.MapFrom(src =>

@@ -11,6 +11,7 @@ namespace BookingSystem.Domain.Repositories
 		Task<IEnumerable<Homestay>> GetByLocationAsync(string city, string country);
 		Task<IEnumerable<Homestay>> GetByTypeAsync(int AccommodationTypeId);
 		Task<Homestay?> GetWithDetailsAsync(int id);
+		Task<Homestay?> GetHomestayByIdAsync(int id);
 		Task<bool> IsNameExistsAsync(string name, int? excludeId = null);
 	}
 }

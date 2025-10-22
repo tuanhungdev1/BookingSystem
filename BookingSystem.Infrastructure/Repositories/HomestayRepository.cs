@@ -13,6 +13,20 @@ namespace BookingSystem.Infrastructure.Repositories
 		{
 		}
 
+		public async Task<Homestay?> GetHomestayByIdAsync(int id)
+		{
+			return await _dbSet
+				.Include(h => h.Owner)
+				.Include(h => h.AvailabilityCalendars)
+				.Include(h => h.PropertyType)
+				.Include(h => h.HomestayImages)
+				.Include(h => h.HomestayAmenities)
+					.ThenInclude(ha => ha.Amenity)
+				.Include(h => h.HomestayRules)
+					.ThenInclude(hr => hr.Rule)
+				.FirstOrDefaultAsync(h => h.Id == id);
+		}
+
 		public async Task<PagedResult<Homestay>> GetAllHomestayAsync(HomestayFilter filter)
 		{
 			var query = _dbSet.AsQueryable();
