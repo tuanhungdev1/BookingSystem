@@ -1,5 +1,6 @@
 ﻿using BookingSystem.Application.Contracts;
 using BookingSystem.Application.DTOs.UserDTO;
+using BookingSystem.Application.DTOs.Users;
 using BookingSystem.Application.Models.Responses;
 using BookingSystem.Domain.Base;
 using BookingSystem.Domain.Base.Filter;
@@ -180,6 +181,32 @@ namespace BookingSystem.Controllers
 				{
 					Success = true,
 					Message = "User updated successfully"
+				});
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+		}
+
+		[HttpPut("user-profile")]
+		[Authorize]
+		public async Task<ActionResult<ApiResponse<object>>> UpdateUserProfile([FromBody] UpdateUserProfileDto updateUser)
+		{
+			var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+			try
+			{
+				var userData = await _userService.UpdateUserProfileAsync(int.Parse(currentUserId), updateUser);
+				return Ok(new ApiResponse<UserProfileDto>
+				{
+					Success = true,
+					Message = "User updated successfully",
+					Data = userData
 				});
 			}
 			catch (Exception ex)

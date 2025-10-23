@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace BookingSystem.Application.DTOs.PropertyTypeDTO
+﻿namespace BookingSystem.Application.DTOs.PropertyTypeDTO
 {
 	public class PropertyTypeDto
 	{

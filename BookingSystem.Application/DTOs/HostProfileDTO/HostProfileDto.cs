@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace BookingSystem.Application.DTOs.HostProfileDTO
+﻿namespace BookingSystem.Application.DTOs.HostProfileDTO
 {
 	public class HostProfileDto
 	{

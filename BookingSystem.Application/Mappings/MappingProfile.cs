@@ -13,6 +13,7 @@ using BookingSystem.Application.DTOs.ReviewDTO;
 using BookingSystem.Application.DTOs.RuleDTO;
 using BookingSystem.Application.DTOs.UserDTO;
 using BookingSystem.Application.DTOs.UserPreferenceDTO;
+using BookingSystem.Application.DTOs.Users;
 using BookingSystem.Application.Models.Responses;
 using BookingSystem.Domain.Entities;
 using BookingSystem.Domain.Enums;
@@ -44,6 +45,8 @@ namespace BookingSystem.Application.Mappings
 			CreateMap<CreateUserDto, User>()
 				.ForMember(dest => dest.Id, opt => opt.Ignore());
 			CreateMap<UpdateUserDto, User>()
+				.ForMember(dest => dest.Id, opt => opt.Ignore());
+			CreateMap<UpdateUserProfileDto, User>()
 				.ForMember(dest => dest.Id, opt => opt.Ignore());
 		}
 

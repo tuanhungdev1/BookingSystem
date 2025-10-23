@@ -2,11 +2,6 @@
 using BookingSystem.Domain.Enums;
 using BookingSystem.Infrastructure.PaymentGateways;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BookingSystem.Application.Factories
 {

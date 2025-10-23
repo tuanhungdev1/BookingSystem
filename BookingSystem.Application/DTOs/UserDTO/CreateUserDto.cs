@@ -1,5 +1,4 @@
 ﻿using BookingSystem.Domain.Enums;
-using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 
 namespace BookingSystem.Application.DTOs.UserDTO

@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
 using BookingSystem.Application.Contracts;
 using BookingSystem.Application.DTOs.UserDTO;
-using BookingSystem.Application.Models.Responses;
 using BookingSystem.Domain.Base.Filter;
 using BookingSystem.Domain.Base;
 using BookingSystem.Domain.Entities;
@@ -13,6 +12,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
 using BookingSystem.Application.DTOs.ImageDTO;
 using BookingSystem.Application.Models.Constants;
+using Microsoft.Identity.Client;
+using BookingSystem.Application.DTOs.Users;
+using BookingSystem.Application.Models.Responses;
 
 namespace BookingSystem.Application.Services
 {
@@ -43,6 +45,30 @@ namespace BookingSystem.Application.Services
 			_unitOfWork = unitOfWork;
 			_cloudinaryService = cloudinaryService;
 		}
+
+		public async Task<UserProfileDto> UpdateUserProfileAsync(int userId, UpdateUserProfileDto userProfile)
+		{
+			_logger.LogInformation("Starting profile update for User ID {UserId}.", userId);
+
+			var user = await _userRepository.GetByIdAsync(userId);
+
+			if (user == null)
+			{
+				_logger.LogWarning("User with ID {UserId} not found. Cannot update profile.", userId);
+				throw new BadRequestException($"Không tìm thấy người dùng với ID {userId}.");
+			}
+
+			_logger.LogInformation("Mapping updated profile data for User ID {UserId}.", userId);
+			_mapper.Map(userProfile, user);
+
+			_userRepository.Update(user);
+			await _userRepository.SaveChangesAsync();
+
+			_logger.LogInformation("Successfully updated profile for User ID {UserId}.", userId);
+
+			return _mapper.Map<UserProfileDto>(user);
+		}
+
 
 		#region User CRUD Operations
 

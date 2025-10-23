@@ -1,4 +1,5 @@
 ﻿using BookingSystem.Application.DTOs.UserDTO;
+using BookingSystem.Application.DTOs.Users;
 using BookingSystem.Application.Models.Responses;
 using BookingSystem.Domain.Base;
 using BookingSystem.Domain.Base.Filter;
@@ -39,5 +40,6 @@ namespace BookingSystem.Application.Contracts
 		Task<int> GetTotalUsersCountAsync();
 		Task<int> GetActiveUsersCountAsync();
 		Task<UserStatisticsDto> GetUserStatisticsAsync();
+		Task<UserProfileDto> UpdateUserProfileAsync(int userId, UpdateUserProfileDto userProfile);
 	}
 }

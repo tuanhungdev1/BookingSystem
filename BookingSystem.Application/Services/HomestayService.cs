@@ -15,7 +15,6 @@ using BookingSystem.Application.DTOs.HomestayImageDTO;
 using BookingSystem.Application.DTOs.HomestayAmenityDTO;
 using BookingSystem.Application.DTOs.HomestayRuleDTO;
 using BookingSystem.Application.DTOs.AccommodationDTO.BookingSystem.Application.DTOs;
-using Microsoft.EntityFrameworkCore;
 
 namespace BookingSystem.Application.Services
 {

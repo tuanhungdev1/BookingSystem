@@ -1,9 +1,7 @@
 ﻿using BookingSystem.Application.DTOs.AmenityDTO;
 using BookingSystem.Application.DTOs.AvailabilityCalendarDTO;
 using BookingSystem.Application.DTOs.HomestayDTO;
-using BookingSystem.Application.DTOs.PropertyTypeDTO;
 using BookingSystem.Application.DTOs.RuleDTO;
-using BookingSystem.Application.DTOs.UserDTO;
 
 namespace BookingSystem.Application.DTOs.AccommodationDTO
 {

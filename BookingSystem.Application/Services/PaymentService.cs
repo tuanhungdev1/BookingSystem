@@ -1,11 +1,9 @@
 ﻿using BookingSystem.Application.Contracts;
 using BookingSystem.Application.DTOs.PaymentDTO;
-using BookingSystem.Application.DTOs.BookingDTO;
 using BookingSystem.Domain.Entities;
 using BookingSystem.Domain.Enums;
 using BookingSystem.Domain.Exceptions;
 using BookingSystem.Domain.Repositories;
-using BookingSystem.Infrastructure.PaymentGateways;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http;
