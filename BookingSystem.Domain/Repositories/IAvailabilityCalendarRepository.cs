@@ -18,5 +18,6 @@ namespace BookingSystem.Domain.Repositories
 		Task<bool> ExistsAsync(int homestayId, DateOnly date);
 		Task DeleteByDateRangeAsync(int homestayId, DateOnly startDate, DateOnly endDate);
 		Task<List<DateOnly>> GetExistingDatesAsync(int homestayId, List<DateOnly> dates);
+		Task<IEnumerable<AvailabilityCalendar>> GetByIdsAsync(IEnumerable<int> ids);
 	}
 }

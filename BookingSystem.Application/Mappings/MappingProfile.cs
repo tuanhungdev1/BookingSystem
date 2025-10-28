@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using BookingSystem.Application.DTOs.AccommodationDTO;
-using BookingSystem.Application.DTOs.AccommodationDTO.BookingSystem.Application.DTOs;
 using BookingSystem.Application.DTOs.AmenityDTO;
 using BookingSystem.Application.DTOs.AvailabilityCalendarDTO;
 using BookingSystem.Application.DTOs.BookingDTO;
@@ -14,6 +13,7 @@ using BookingSystem.Application.DTOs.RuleDTO;
 using BookingSystem.Application.DTOs.UserDTO;
 using BookingSystem.Application.DTOs.UserPreferenceDTO;
 using BookingSystem.Application.DTOs.Users;
+using BookingSystem.Application.DTOs.WishlistDTO;
 using BookingSystem.Application.Models.Responses;
 using BookingSystem.Domain.Entities;
 using BookingSystem.Domain.Enums;
@@ -35,6 +35,12 @@ namespace BookingSystem.Application.Mappings
 			ConfigureUserPreferenceMapping();
 			ConfigureAmenitiesMappings();
 			ConfigureAvailabilityCalendarMappings();
+			ConfigureWishlistItemMappings();
+		}
+
+		private void ConfigureWishlistItemMappings()
+		{
+			CreateMap<WishlistItem, WishlistItemDto>();
 		}
 
 		private void ConfigureUserMappings()

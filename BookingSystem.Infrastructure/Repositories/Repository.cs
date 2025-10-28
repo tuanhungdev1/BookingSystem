@@ -49,6 +49,7 @@ namespace BookingSystem.Infrastructure.Repositories
 		public virtual void Update(T entity)
 		{
 			_dbSet.Update(entity);
+			_context.Entry(entity).Property("Id").IsModified = false;
 		}
 
 		public virtual void Remove(T entity)

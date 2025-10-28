@@ -2,14 +2,68 @@
 {
 	public class HomestayFilter : PaginationFilter
 	{
-		public string? SearchTerm { get; set; }
+		// Existing filters
+		public string? Search { get; set; }
 		public string? City { get; set; }
 		public string? Country { get; set; }
 		public string? Type { get; set; }
-		public int? MinStarRating { get; set; }
-		public int? MaxStarRating { get; set; }
 		public bool? IsActive { get; set; }
-		public string? SortBy { get; set; } = "name";
-		public string? SortDirection { get; set; } = "asc";
+
+		// NEW: Additional filters
+		public string? Province { get; set; }
+		public bool? IsApproved { get; set; }
+		public bool? IsFeatured { get; set; }
+		public bool? IsInstantBook { get; set; }
+
+		// Price range
+		public decimal? MinPrice { get; set; }
+		public decimal? MaxPrice { get; set; }
+		public bool? HasWeekendPrice { get; set; }
+		public bool? HasWeeklyDiscount { get; set; }
+		public bool? HasMonthlyDiscount { get; set; }
+
+		// Guest capacity
+		public int? MinGuests { get; set; }
+		public int? MinChildren { get; set; }
+
+		// Rooms
+		public int? MinBedrooms { get; set; }
+		public int? MinBathrooms { get; set; }
+		public int? MinBeds { get; set; }
+		public int? MinRooms { get; set; }
+
+		// Location (radius search)
+		public decimal? Latitude { get; set; }
+		public decimal? Longitude { get; set; }
+		public decimal? RadiusInKm { get; set; }
+
+		// ✅ Amenities / features
+		public bool? HasParking { get; set; }
+		public bool? IsPetFriendly { get; set; }
+		public bool? HasPrivatePool { get; set; }
+
+
+		// Owner filter
+		public int? OwnerId { get; set; }
+
+		// Property type filter
+		public int? PropertyTypeId { get; set; }
+
+		// Date range filter (for availability)
+		public DateOnly? CheckInDate { get; set; }
+		public DateOnly? CheckOutDate { get; set; }
+
+		// Amenities filter (comma-separated amenity IDs)
+		public string? AmenityIds { get; set; }
+
+		// Date filters
+		public DateTime? CreatedFrom { get; set; }
+		public DateTime? CreatedTo { get; set; }
+		public DateTime? ApprovedFrom { get; set; }
+		public DateTime? ApprovedTo { get; set; }
+
+		// Sorting
+		public string? SortBy { get; set; } = "CreatedAt";
+		public string? SortDirection { get; set; } = "desc";
 	}
 }

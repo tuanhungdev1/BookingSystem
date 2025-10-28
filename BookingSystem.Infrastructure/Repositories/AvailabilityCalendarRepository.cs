@@ -23,6 +23,14 @@ namespace BookingSystem.Infrastructure.Repositories
 				.FirstOrDefaultAsync(ac => ac.HomestayId == homestayId && ac.AvailableDate == date);
 		}
 
+		// Thêm vào class AvailabilityCalendarRepository
+		public async Task<IEnumerable<AvailabilityCalendar>> GetByIdsAsync(IEnumerable<int> ids)
+		{
+			return await _dbSet
+				.Where(ac => ids.Contains(ac.Id) && !ac.IsDeleted)
+				.ToListAsync();
+		}
+
 		public async Task<IEnumerable<AvailabilityCalendar>> GetByHomestayIdAsync(int homestayId)
 		{
 			return await _dbSet

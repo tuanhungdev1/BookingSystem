@@ -4,6 +4,7 @@ using BookingSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BookingSystem.Infrastructure.Migrations
 {
     [DbContext(typeof(BookingDbContext))]
-    partial class BookingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251024211833_UpdateHomestayTable")]
+    partial class UpdateHomestayTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -507,9 +510,6 @@ namespace BookingSystem.Infrastructure.Migrations
                     b.Property<decimal?>("AreaInSquareMeters")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("AvailableRooms")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("BaseNightlyPrice")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -549,9 +549,6 @@ namespace BookingSystem.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("FreeCancellationDays")
-                        .HasColumnType("int");
-
                     b.Property<string>("FullAddress")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -590,18 +587,12 @@ namespace BookingSystem.Infrastructure.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
-                    b.Property<bool>("IsFreeCancellation")
-                        .HasColumnType("bit");
-
                     b.Property<bool>("IsInstantBook")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
                     b.Property<bool>("IsPetFriendly")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsPrepaymentRequired")
                         .HasColumnType("bit");
 
                     b.Property<decimal>("Latitude")
@@ -667,9 +658,6 @@ namespace BookingSystem.Infrastructure.Migrations
 
                     b.Property<string>("RejectionReason")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("RoomsAtThisPrice")
-                        .HasColumnType("int");
 
                     b.Property<string>("SearchKeywords")
                         .HasColumnType("nvarchar(max)");

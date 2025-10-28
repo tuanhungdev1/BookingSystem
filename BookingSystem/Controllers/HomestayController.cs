@@ -1,10 +1,12 @@
 ﻿// BookingSystem.Controllers/HomestayController.cs
 using BookingSystem.Application.Contracts;
 using BookingSystem.Application.DTOs.AccommodationDTO;
-using BookingSystem.Application.DTOs.AccommodationDTO.BookingSystem.Application.DTOs;
-using BookingSystem.Application.DTOs.HomestayAmenityDTO;
+using BookingSystem.Application.DTOs.AmenityDTO;
+using BookingSystem.Application.DTOs.AvailabilityCalendarDTO;
+using BookingSystem.Application.DTOs.HomestayDTO;
 using BookingSystem.Application.DTOs.HomestayImageDTO;
 using BookingSystem.Application.DTOs.HomestayRuleDTO;
+using BookingSystem.Application.DTOs.RuleDTO;
 using BookingSystem.Application.Models.Responses;
 using BookingSystem.Domain.Base;
 using BookingSystem.Domain.Base.Filter;
@@ -321,7 +323,7 @@ namespace BookingSystem.Controllers
 		[Authorize(Roles = "Host,Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> UpdateAmenities(
 			int id,
-			[FromBody] List<CreateHomestayAmenityDto> amenities)
+			[FromForm] UpdateHomestayAmenitiesDto amenitieDto)
 		{
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
@@ -333,7 +335,7 @@ namespace BookingSystem.Controllers
 				});
 			}
 
-			var success = await _homestayService.UpdateHomestayAmenitiesAsync(id, userId, amenities);
+			var success = await _homestayService.UpdateHomestayAmenitiesAsync(id, userId, amenitieDto);
 			if (!success)
 			{
 				return BadRequest(new ApiResponse<object>
@@ -361,7 +363,7 @@ namespace BookingSystem.Controllers
 		[Authorize(Roles = "Host,Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> UpdateRules(
 			int id,
-			[FromBody] List<CreateHomestayRuleDto> rules)
+			[FromForm] UpdateHomestayRulesDto updateDto)
 		{
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
@@ -373,7 +375,7 @@ namespace BookingSystem.Controllers
 				});
 			}
 
-			var success = await _homestayService.UpdateHomestayRulesAsync(id, userId, rules);
+			var success = await _homestayService.UpdateHomestayRulesAsync(id, userId, updateDto);
 			if (!success)
 			{
 				return BadRequest(new ApiResponse<object>
@@ -389,6 +391,232 @@ namespace BookingSystem.Controllers
 				Message = "Homestay rules updated successfully"
 			});
 		}
+
+		#endregion
+
+		/// <summary>
+		/// Cập nhật Availability Calendars cho homestay (Thêm mới, Cập nhật, Xóa)
+		/// </summary>
+		/// <remarks>
+		/// Cho phép thực hiện các thao tác:
+		/// - NewCalendars: Thêm các ngày mới
+		/// - UpdateCalendars: Cập nhật thông tin các ngày hiện có
+		/// - DeleteCalendarIds: Xóa các ngày theo ID
+		/// </remarks>
+		[HttpPut("{id:int}/availability-calendars")]
+		[Authorize(Roles = "Host,Admin")]
+		public async Task<ActionResult<ApiResponse<object>>> UpdateAvailabilityCalendars(
+			int id,
+			[FromBody] UpdateHomestayAvailabilityCalendarsDto request)
+		{
+			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+			{
+				return Unauthorized(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Invalid user authentication"
+				});
+			}
+
+			var success = await _homestayService.UpdateAvailabilityCalendarsAsync(id, userId, request);
+			if (!success)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Failed to update availability calendars"
+				});
+			}
+
+			return Ok(new ApiResponse<object>
+			{
+				Success = true,
+				Message = "Availability calendars updated successfully"
+			});
+		}
+
+		#region Command Endpoints - Approval Management
+
+		/// <summary>
+		/// Phê duyệt homestay (Admin only)
+		/// </summary>
+		[HttpPut("{id:int}/approve")]
+		[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<ApiResponse<HomestayDto>>> ApproveHomestay(
+			int id,
+			[FromBody] ApproveHomestayDto request)
+		{
+			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+			{
+				return Unauthorized(new ApiResponse<HomestayDto>
+				{
+					Success = false,
+					Message = "Invalid user authentication"
+				});
+			}
+
+			var homestay = await _homestayService.ApproveHomestayAsync(id, userId, request);
+			if (homestay == null)
+			{
+				return NotFound(new ApiResponse<HomestayDto>
+				{
+					Success = false,
+					Message = "Homestay not found"
+				});
+			}
+
+			return Ok(new ApiResponse<HomestayDto>
+			{
+				Success = true,
+				Message = request.IsApproved
+					? "Homestay approved successfully"
+					: "Homestay approval status updated",
+				Data = homestay
+			});
+		}
+
+		/// <summary>
+		/// Từ chối homestay (Admin only)
+		/// </summary>
+		[HttpPut("{id:int}/reject")]
+		[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<ApiResponse<HomestayDto>>> RejectHomestay(
+			int id,
+			[FromBody] string rejectionReason)
+		{
+			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+			{
+				return Unauthorized(new ApiResponse<HomestayDto>
+				{
+					Success = false,
+					Message = "Invalid user authentication"
+				});
+			}
+
+			var homestay = await _homestayService.RejectHomestayAsync(id, userId, rejectionReason);
+			if (homestay == null)
+			{
+				return NotFound(new ApiResponse<HomestayDto>
+				{
+					Success = false,
+					Message = "Homestay not found"
+				});
+			}
+
+			return Ok(new ApiResponse<HomestayDto>
+			{
+				Success = true,
+				Message = "Homestay rejected successfully",
+				Data = homestay
+			});
+		}
+
+		/// <summary>
+		/// Lấy danh sách homestay chờ phê duyệt (Admin only)
+		/// </summary>
+		[HttpGet("pending-approvals")]
+		[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<ApiResponse<IEnumerable<HomestayDto>>>> GetPendingApprovals()
+		{
+			var homestays = await _homestayService.GetPendingApprovalsAsync();
+			return Ok(new ApiResponse<IEnumerable<HomestayDto>>
+			{
+				Success = true,
+				Message = "Pending approvals retrieved successfully",
+				Data = homestays
+			});
+		}
+
+		/// <summary>
+		/// Đếm số homestay chờ phê duyệt (Admin only)
+		/// </summary>
+		[HttpGet("pending-approvals/count")]
+		[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<ApiResponse<int>>> CountPendingApprovals()
+		{
+			var count = await _homestayService.CountPendingApprovalsAsync();
+			return Ok(new ApiResponse<int>
+			{
+				Success = true,
+				Message = "Pending approvals count retrieved successfully",
+				Data = count
+			});
+		}
+
+		/// <summary>
+		/// Đặt trạng thái Featured cho homestay (Admin only)
+		/// </summary>
+		[HttpPut("{id:int}/featured")]
+		[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<ApiResponse<object>>> SetFeaturedStatus(
+			int id,
+			[FromBody] bool isFeatured)
+		{
+			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+			{
+				return Unauthorized(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Invalid user authentication"
+				});
+			}
+
+			var success = await _homestayService.SetFeaturedStatusAsync(id, userId, isFeatured);
+			if (!success)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Failed to set featured status"
+				});
+			}
+
+			return Ok(new ApiResponse<object>
+			{
+				Success = true,
+				Message = $"Homestay featured status set to {isFeatured} successfully"
+			});
+		}
+
+		/// <summary>
+		/// Get homestay details by slug
+		/// </summary>
+		[HttpGet("slug/{slug}")]
+		[AllowAnonymous]
+		public async Task<ActionResult<ApiResponse<HomestayDto>>> GetBySlug(string slug)
+		{
+			if (string.IsNullOrWhiteSpace(slug))
+			{
+				return BadRequest(new ApiResponse<HomestayDto>
+				{
+					Success = false,
+					Message = "Slug is required"
+				});
+			}
+
+			var homestay = await _homestayService.GetHomestayBySlugAsync(slug);
+
+			if (homestay == null)
+			{
+				return NotFound(new ApiResponse<HomestayDto>
+				{
+					Success = false,
+					Message = $"Homestay with slug '{slug}' not found"
+				});
+			}
+
+			return Ok(new ApiResponse<HomestayDto>
+			{
+				Success = true,
+				Message = "Homestay retrieved successfully",
+				Data = homestay
+			});
+		}
+
 
 		#endregion
 	}

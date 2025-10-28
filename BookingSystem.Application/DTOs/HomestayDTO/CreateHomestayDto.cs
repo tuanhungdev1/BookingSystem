@@ -1,5 +1,5 @@
-﻿using BookingSystem.Application.DTOs.AvailabilityCalendarDTO;
-using BookingSystem.Application.DTOs.HomestayAmenityDTO;
+﻿using BookingSystem.Application.DTOs.AmenityDTO;
+using BookingSystem.Application.DTOs.AvailabilityCalendarDTO;
 using BookingSystem.Application.DTOs.HomestayImageDTO;
 using BookingSystem.Application.DTOs.HomestayRuleDTO;
 using System.ComponentModel.DataAnnotations;
@@ -14,6 +14,8 @@ namespace BookingSystem.Application.DTOs.AccommodationDTO
 
 		[MaxLength(2000, ErrorMessage = "Description cannot exceed 2000 characters.")]
 		public string? HomestayDescription { get; set; }
+
+		public string? Slug { get; set; }
 
 		[Required(ErrorMessage = "Full address is required.")]
 		[MaxLength(300, ErrorMessage = "Full address cannot exceed 300 characters.")]
@@ -42,9 +44,14 @@ namespace BookingSystem.Application.DTOs.AccommodationDTO
 		[Range(-180, 180, ErrorMessage = "Longitude must be between -180 and 180.")]
 		public decimal Longitude { get; set; }
 
-		[Required(ErrorMessage = "Maximum guests is required.")]
-		[Range(1, 50, ErrorMessage = "Maximum guests must be between 1 and 50.")]
-		public int MaximumGuests { get; set; }
+		[Range(0, 10000, ErrorMessage = "Area must be a positive value.")]
+		public decimal? AreaInSquareMeters { get; set; }
+
+		[Range(0, 100, ErrorMessage = "Number of floors must be between 0 and 100.")]
+		public int? NumberOfFloors { get; set; }
+
+		[Range(0, 100, ErrorMessage = "Number of rooms must be between 0 and 100.")]
+		public int NumberOfRooms { get; set; }
 
 		[Required(ErrorMessage = "Number of bedrooms is required.")]
 		[Range(0, 50, ErrorMessage = "Number of bedrooms must be between 0 and 50.")]
@@ -57,6 +64,13 @@ namespace BookingSystem.Application.DTOs.AccommodationDTO
 		[Required(ErrorMessage = "Number of beds is required.")]
 		[Range(0, 50, ErrorMessage = "Number of beds must be between 0 and 50.")]
 		public int NumberOfBeds { get; set; }
+
+		[Required(ErrorMessage = "Maximum guests is required.")]
+		[Range(1, 50, ErrorMessage = "Maximum guests must be between 1 and 50.")]
+		public int MaximumGuests { get; set; }
+
+		[Range(0, 50, ErrorMessage = "Maximum children must be between 0 and 50.")]
+		public int MaximumChildren { get; set; }
 
 		[Required(ErrorMessage = "Base nightly price is required.")]
 		[Range(0, 1000000000, ErrorMessage = "Base nightly price must be greater than 0.")]
@@ -79,25 +93,32 @@ namespace BookingSystem.Application.DTOs.AccommodationDTO
 		[Range(1, 365, ErrorMessage = "Maximum nights must be between 1 and 365.")]
 		public int MaximumNights { get; set; } = 365;
 
+		public bool? IsFreeCancellation { get; set; }   
+		public int? FreeCancellationDays { get; set; }     
+		public bool? IsPrepaymentRequired { get; set; }  
+
+		public int? AvailableRooms { get; set; }           
+		public int? RoomsAtThisPrice { get; set; }         
+
+		public TimeOnly CheckInTime { get; set; } = new TimeOnly(15, 0);
+		public TimeOnly CheckOutTime { get; set; } = new TimeOnly(11, 0);
+		public bool IsInstantBook { get; set; } = false;
+		public bool HasParking { get; set; } = false;
+		public bool IsPetFriendly { get; set; } = false;
+		public bool HasPrivatePool { get; set; } = false;
+
 		[Required(ErrorMessage = "OwnerId is required.")]
-		public int OwnerId { get; set; } 
+		public int OwnerId { get; set; }
 
 		[Required(ErrorMessage = "PropertyTypeId is required.")]
 		public int PropertyTypeId { get; set; }
-
-		// Thông tin check-in/check-out
-		public TimeOnly CheckInTime { get; set; } = new TimeOnly(15, 0);
-		public TimeOnly CheckOutTime { get; set; } = new TimeOnly(11, 0);
-
-		// Cài đặt đặt phòng
-		public bool IsInstantBook { get; set; } = false;
-
-		// Collections
+		public string? SearchKeywords { get; set; }
 		[Required(ErrorMessage = "At least one image is required.")]
 		[MinLength(1, ErrorMessage = "At least one image is required.")]
-		public List<CreateHomestayImageDto> Images { get; set; } = new List<CreateHomestayImageDto>();
-		public List<CreateHomestayAmenityDto> Amenities { get; set; } = new List<CreateHomestayAmenityDto>();
-		public List<CreateHomestayRuleDto> Rules { get; set; } = new List<CreateHomestayRuleDto>();
-		public List<CreateAvailabilityCalendarDto> AvailabilityCalendars { get; set; } = new List<CreateAvailabilityCalendarDto>();
+		public List<CreateHomestayImageDto> Images { get; set; } = new();
+
+		public List<CreateHomestayAmenityDto> Amenities { get; set; } = new();
+		public List<CreateHomestayRuleDto> Rules { get; set; } = new();
+		public List<CreateAvailabilityCalendarDto> AvailabilityCalendars { get; set; } = new();
 	}
 }
