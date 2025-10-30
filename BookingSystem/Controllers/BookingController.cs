@@ -47,10 +47,11 @@ namespace BookingSystem.Controllers
 		public async Task<ActionResult<ApiResponse<bool>>> CheckAvailability(
 			[FromQuery] int homestayId,
 			[FromQuery] DateTime checkInDate,
-			[FromQuery] DateTime checkOutDate)
+			[FromQuery] DateTime checkOutDate,
+			[FromQuery] int? excludeBookingId = null)
 		{
 			var isAvailable = await _bookingService.IsHomestayAvailableAsync(
-				homestayId, checkInDate, checkOutDate);
+				homestayId, checkInDate, checkOutDate, excludeBookingId);
 
 			return Ok(new ApiResponse<bool>
 			{
@@ -64,7 +65,7 @@ namespace BookingSystem.Controllers
 		/// Tạo booking mới (Guest)
 		/// </summary>
 		[HttpPost]
-		[Authorize(Roles = "Guest,Admin")]
+		[Authorize]
 		public async Task<ActionResult<ApiResponse<BookingDto>>> Create([FromBody] CreateBookingDto request)
 		{
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -440,7 +441,16 @@ namespace BookingSystem.Controllers
 		[Authorize(Roles = "Admin")]
 		public async Task<ActionResult<ApiResponse<object>>> MarkAsCompleted(int id)
 		{
-			var success = await _bookingService.MarkAsCompletedAsync(id);
+			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+			{
+				return Unauthorized(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Invalid user authentication"
+				});
+			}
+			var success = await _bookingService.MarkAsCompletedAsync(id, userId);
 			if (!success)
 			{
 				return BadRequest(new ApiResponse<object>

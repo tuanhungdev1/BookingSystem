@@ -30,18 +30,68 @@ namespace BookingSystem.Application.Mappings
 			ConfigureHostProfileMappings();
 			ConfigureHomestayImageMappings();
 			ConfigureRuleMapping();
-			ConfigureBookingMapping();
 			ConfigureReviewMapping();
 			ConfigureUserPreferenceMapping();
 			ConfigureAmenitiesMappings();
 			ConfigureAvailabilityCalendarMappings();
 			ConfigureWishlistItemMappings();
+			ConfigureBookingMappings();
+			ConfigurePaymentMappings();
+		}
+
+		private void ConfigurePaymentMappings()
+		{
+			CreateMap<Payment, PaymentDto>();
+		}
+
+		private void ConfigureBookingMappings()
+		{
+			CreateMap<Booking, BookingDto>()
+				.ForMember(dest => dest.GuestName, opt => opt.MapFrom(src => src.Guest.FullName))
+				.ForMember(dest => dest.GuestEmail, opt => opt.MapFrom(src => src.Guest.Email))
+				.ForMember(dest => dest.GuestPhone, opt => opt.MapFrom(src => src.Guest.PhoneNumber))
+				.ForMember(dest => dest.GuestAvatar, opt => opt.MapFrom(src => src.Guest.Avatar))
+				.AfterMap((src, dest) =>
+				{
+					dest.NumberOfNights = (src.CheckOutDate - src.CheckInDate).Days;
+				})
+				.ForMember(dest => dest.BookingStatusDisplay,
+					opt => opt.MapFrom(src => src.BookingStatus.ToString()))
+				.ForMember(dest => dest.Homestay, opt => opt.MapFrom(src => src.Homestay))
+				.ForMember(dest => dest.Payments, opt => opt.MapFrom(src => src.Payments))
+				.ReverseMap();
+
+			CreateMap<Homestay, BookingHomestayDto>()
+				.ForMember(dest => dest.OwnerId, opt => opt.MapFrom(src => src.Owner.Id))
+				.ForMember(dest => dest.OwnerName, opt => opt.MapFrom(src => src.Owner.FullName))
+				.ForMember(dest => dest.OwnerEmail, opt => opt.MapFrom(src => src.Owner.Email))
+				.ForMember(dest => dest.OwnerPhone, opt => opt.MapFrom(src => src.Owner.PhoneNumber))
+				.ForMember(dest => dest.OwnerAvatar, opt => opt.MapFrom(src => src.Owner.Avatar))
+				.ForMember(dest => dest.PropertyTypeName, opt => opt.MapFrom(src => src.PropertyType.TypeName))
+				.ForMember(dest => dest.MainImageUrl, opt => opt.MapFrom(src =>
+									src.HomestayImages.FirstOrDefault(i => i.IsPrimaryImage) != null
+										? src.HomestayImages.FirstOrDefault(i => i.IsPrimaryImage)!.ImageUrl
+										: null))
+				.ReverseMap();
+
+			CreateMap<Booking, BookingPaymentInfoDto>()
+			   .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+			   .ForMember(dest => dest.BookingCode, opt => opt.MapFrom(src => src.BookingCode))
+			   .ForMember(dest => dest.CheckInDate, opt => opt.MapFrom(src => src.CheckInDate))
+			   .ForMember(dest => dest.CheckOutDate, opt => opt.MapFrom(src => src.CheckOutDate))
+			   .ForMember(dest => dest.TotalAmount, opt => opt.MapFrom(src => src.TotalAmount))
+			   .ForMember(dest => dest.HomestayTitle, opt => opt.MapFrom(src => src.Homestay.HomestayTitle))
+			   .ForMember(dest => dest.GuestName, opt => opt.MapFrom(src => src.Guest.FullName))
+			   .ForMember(dest => dest.HomestayTitle, opt => opt.MapFrom(src => src.Homestay != null ? src.Homestay.HomestayTitle : string.Empty))
+			   .ForMember(dest => dest.GuestName, opt => opt.MapFrom(src => src.Guest != null ? src.Guest.FullName : string.Empty));
 		}
 
 		private void ConfigureWishlistItemMappings()
 		{
 			CreateMap<WishlistItem, WishlistItemDto>();
 		}
+
+
 
 		private void ConfigureUserMappings()
 		{
@@ -142,8 +192,8 @@ namespace BookingSystem.Application.Mappings
 					src.AvailabilityCalendars.Where(ac => !ac.IsDeleted)))
 
 				// Statistics
-				//.ForMember(dest => dest.AverageRating, opt => opt.MapFrom(src =>
-				//	src.Reviews.Any() ? src.Reviews.Average(r => r.Rating) : 0))
+				.ForMember(dest => dest.RatingAverage, opt => opt.MapFrom(src =>
+					src.Reviews.Any() ? src.Reviews.Average(r => r.OverallRating) : 0))
 				.ForMember(dest => dest.TotalReviews, opt => opt.MapFrom(src =>
 					src.Reviews.Count));
 		
@@ -226,35 +276,6 @@ namespace BookingSystem.Application.Mappings
 					opt => opt.MapFrom(src => src.Homestay.HomestayTitle));
 
 			CreateMap<CreateReviewDto, Review>();
-		}
-
-		public void ConfigureBookingMapping()
-		{
-			CreateMap<Booking, BookingDto>()
-				.ForMember(dest => dest.NumberOfNights, opt => opt.MapFrom(src =>
-					(src.CheckOutDate.Date - src.CheckInDate.Date).Days))
-				.ForMember(dest => dest.BookingStatusDisplay, opt => opt.MapFrom(src =>
-					src.BookingStatus.ToString()))
-				.ForMember(dest => dest.GuestName, opt => opt.MapFrom(src =>
-					src.Guest.FirstName + " " + src.Guest.LastName))
-				.ForMember(dest => dest.GuestEmail, opt => opt.MapFrom(src =>
-					src.Guest.Email))
-				.ForMember(dest => dest.GuestPhone, opt => opt.MapFrom(src =>
-					src.Guest.PhoneNumber))
-				.ForMember(dest => dest.GuestAvatar, opt => opt.MapFrom(src =>
-					src.Guest.Avatar))
-				.ForMember(dest => dest.Homestay, opt => opt.MapFrom(src => src.Homestay))
-				.ForMember(dest => dest.Payments, opt => opt.MapFrom(src => src.Payments))
-				.ForMember(dest => dest.CanReview, opt => opt.MapFrom(src =>
-					(src.BookingStatus == BookingStatus.CheckedOut || src.BookingStatus == BookingStatus.Completed)))
-				.ForMember(dest => dest.HasReviewed, opt => opt.MapFrom(src =>
-					src.Reviews.Any(r => r.ReviewerId == src.GuestId)));
-
-			CreateMap<Payment, PaymentDto>()
-				.ForMember(dest => dest.PaymentMethodDisplay, opt => opt.MapFrom(src =>
-					src.PaymentMethod.ToString()))
-				.ForMember(dest => dest.PaymentStatusDisplay, opt => opt.MapFrom(src =>
-					src.PaymentStatus.ToString()));
 		}
 	}
 }

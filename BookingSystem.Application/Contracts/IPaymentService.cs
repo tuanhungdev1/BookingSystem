@@ -1,10 +1,13 @@
 ﻿using BookingSystem.Application.DTOs.PaymentDTO;
+using BookingSystem.Domain.Base;
+using BookingSystem.Domain.Base.Filter;
 using BookingSystem.Domain.Enums;
 
 namespace BookingSystem.Application.Contracts
 {
 	public interface IPaymentService
 	{
+		Task<PagedResult<PaymentDto>> GetAllPaymentAsync(PaymentFilter paymentFilter, int? userId = null);
 		// Online payment methods
 		Task<PaymentUrlResponseDto> CreateOnlinePaymentAsync(int userId, CreateOnlinePaymentDto request);
 		Task<PaymentDto> ProcessPaymentCallbackAsync(PaymentMethod paymentMethod, Dictionary<string, string> callbackData);

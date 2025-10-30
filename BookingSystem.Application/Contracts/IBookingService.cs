@@ -19,7 +19,7 @@ namespace BookingSystem.Application.Contracts
 		Task<bool> CancelBookingAsync(int bookingId, int userId, CancelBookingDto request);
 		Task<bool> CheckInAsync(int bookingId, int hostId);
 		Task<bool> CheckOutAsync(int bookingId, int hostId);
-		Task<bool> MarkAsCompletedAsync(int bookingId);
+		Task<bool> MarkAsCompletedAsync(int bookingId, int userId);
 		Task<bool> MarkAsNoShowAsync(int bookingId, int hostId);
 		Task<bool> IsHomestayAvailableAsync(int homestayId, DateTime checkInDate, DateTime checkOutDate, int? excludeBookingId = null);
 		Task<BookingStatisticsDto> GetBookingStatisticsAsync(int? homestayId = null, int? hostId = null, DateTime? startDate = null, DateTime? endDate = null);

@@ -21,6 +21,7 @@ namespace BookingSystem.Application.DTOs.BookingDTO
 		public decimal DiscountAmount { get; set; }
 		public decimal TotalAmount { get; set; }
 		public BookingStatus BookingStatus { get; set; }
+		public PaymentStatus PaymentStatus { get; set; }
 		public string BookingStatusDisplay { get; set; } = string.Empty;
 		public string? SpecialRequests { get; set; }
 		public string? CancellationReason { get; set; }

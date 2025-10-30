@@ -123,7 +123,7 @@ namespace BookingSystem.Application.Services
 				{
 					// Check if it's a weekend
 					var dayOfWeek = currentDate.DayOfWeek;
-					isWeekend = dayOfWeek == DayOfWeek.Friday || dayOfWeek == DayOfWeek.Saturday;
+					isWeekend = dayOfWeek == DayOfWeek.Sunday || dayOfWeek == DayOfWeek.Saturday;
 
 					if (isWeekend && homestay.WeekendPrice.HasValue)
 					{
@@ -306,9 +306,13 @@ namespace BookingSystem.Application.Services
 			}
 
 			// Can only update if status is Pending or Confirmed
-			if (booking.BookingStatus != BookingStatus.Pending && booking.BookingStatus != BookingStatus.Confirmed)
+			if (!isAdmin)
 			{
-				throw new BadRequestException("Booking cannot be updated in its current status.");
+				// Can only update if status is Pending or Confirmed
+				if (booking.BookingStatus != BookingStatus.Pending && booking.BookingStatus != BookingStatus.Confirmed)
+				{
+					throw new BadRequestException("Booking cannot be updated in its current status.");
+				}
 			}
 
 			// Check if dates are being changed
@@ -528,23 +532,30 @@ namespace BookingSystem.Application.Services
 			}
 
 			var roles = await _userManager.GetRolesAsync(host);
-			if (!roles.Contains("Admin") && booking.Homestay.OwnerId != hostId)
+			var isAdmin = roles.Contains("Admin");
+
+			// Chỉ cho phép Admin hoặc chủ Homestay xác nhận
+			if (!isAdmin && booking.Homestay.OwnerId != hostId)
 			{
 				throw new BadRequestException("You do not have permission to confirm this booking.");
 			}
 
-			if (booking.BookingStatus != BookingStatus.Pending)
+			// Nếu không phải Admin thì chỉ được xác nhận khi trạng thái là Pending
+			if (!isAdmin && booking.BookingStatus != BookingStatus.Pending)
 			{
 				throw new BadRequestException("Only pending bookings can be confirmed.");
 			}
 
-			// Check if still available
-			var isAvailable = await IsHomestayAvailableAsync(
-				booking.HomestayId, booking.CheckInDate, booking.CheckOutDate, bookingId);
-
-			if (!isAvailable)
+			// Nếu không phải Admin thì phải kiểm tra xem homestay còn trống không
+			if (!isAdmin)
 			{
-				throw new BadRequestException("Homestay is no longer available for these dates.");
+				var isAvailable = await IsHomestayAvailableAsync(
+					booking.HomestayId, booking.CheckInDate, booking.CheckOutDate, bookingId);
+
+				if (!isAvailable)
+				{
+					throw new BadRequestException("Homestay is no longer available for these dates.");
+				}
 			}
 
 			try
@@ -559,7 +570,8 @@ namespace BookingSystem.Application.Services
 				// TODO: Send confirmation email/notification to guest
 
 				await _unitOfWork.CommitTransactionAsync();
-				_logger.LogInformation("Booking {BookingId} confirmed successfully.", bookingId);
+				_logger.LogInformation("Booking {BookingId} confirmed successfully by {Role} {UserId}.",
+					bookingId, isAdmin ? "Admin" : "Host", hostId);
 
 				return true;
 			}
@@ -570,6 +582,7 @@ namespace BookingSystem.Application.Services
 				throw;
 			}
 		}
+
 
 		public async Task<bool> RejectBookingAsync(int bookingId, int hostId, string reason)
 		{
@@ -588,12 +601,16 @@ namespace BookingSystem.Application.Services
 			}
 
 			var roles = await _userManager.GetRolesAsync(host);
-			if (!roles.Contains("Admin") && booking.Homestay.OwnerId != hostId)
+			var isAdmin = roles.Contains("Admin");
+
+			// Chỉ cho phép Admin hoặc chủ Homestay từ chối
+			if (!isAdmin && booking.Homestay.OwnerId != hostId)
 			{
 				throw new BadRequestException("You do not have permission to reject this booking.");
 			}
 
-			if (booking.BookingStatus != BookingStatus.Pending)
+			// Nếu không phải Admin, chỉ có thể từ chối khi booking đang ở trạng thái Pending
+			if (!isAdmin && booking.BookingStatus != BookingStatus.Pending)
 			{
 				throw new BadRequestException("Only pending bookings can be rejected.");
 			}
@@ -607,6 +624,7 @@ namespace BookingSystem.Application.Services
 				booking.CancelledAt = DateTime.UtcNow;
 				booking.CancelledBy = hostId.ToString();
 				booking.UpdatedAt = DateTime.UtcNow;
+
 				_bookingRepository.Update(booking);
 				await _bookingRepository.SaveChangesAsync();
 
@@ -614,7 +632,8 @@ namespace BookingSystem.Application.Services
 				// TODO: Process refund if payment was made
 
 				await _unitOfWork.CommitTransactionAsync();
-				_logger.LogInformation("Booking {BookingId} rejected successfully.", bookingId);
+				_logger.LogInformation("Booking {BookingId} rejected successfully by {Role} {UserId}.",
+					bookingId, isAdmin ? "Admin" : "Host", hostId);
 
 				return true;
 			}
@@ -625,6 +644,7 @@ namespace BookingSystem.Application.Services
 				throw;
 			}
 		}
+
 
 
 		public async Task<bool> CancelBookingAsync(int bookingId, int userId, CancelBookingDto request)
@@ -647,18 +667,20 @@ namespace BookingSystem.Application.Services
 			var isAdmin = roles.Contains("Admin");
 			var isGuest = booking.GuestId == userId;
 
+			// Chỉ cho phép Admin hoặc chính Guest hủy
 			if (!isAdmin && !isGuest)
 			{
 				throw new BadRequestException("You do not have permission to cancel this booking.");
 			}
 
-			if (booking.BookingStatus != BookingStatus.Pending && booking.BookingStatus != BookingStatus.Confirmed)
+			// Nếu không phải Admin thì chỉ được hủy khi trạng thái là Pending hoặc Confirmed
+			if (!isAdmin && booking.BookingStatus != BookingStatus.Pending && booking.BookingStatus != BookingStatus.Confirmed)
 			{
 				throw new BadRequestException("Only pending or confirmed bookings can be cancelled.");
 			}
 
-			// Check if already checked in
-			if (booking.BookingStatus == BookingStatus.CheckedIn)
+			// Nếu không phải Admin thì không được hủy khi đã check-in
+			if (!isAdmin && booking.BookingStatus == BookingStatus.CheckedIn)
 			{
 				throw new BadRequestException("Cannot cancel a booking that is already checked in.");
 			}
@@ -672,6 +694,7 @@ namespace BookingSystem.Application.Services
 				booking.CancelledAt = DateTime.UtcNow;
 				booking.CancelledBy = userId.ToString();
 				booking.UpdatedAt = DateTime.UtcNow;
+
 				_bookingRepository.Update(booking);
 				await _bookingRepository.SaveChangesAsync();
 
@@ -679,7 +702,8 @@ namespace BookingSystem.Application.Services
 				// TODO: Process refund
 
 				await _unitOfWork.CommitTransactionAsync();
-				_logger.LogInformation("Booking {BookingId} cancelled successfully.", bookingId);
+				_logger.LogInformation("Booking {BookingId} cancelled successfully by {Role} {UserId}.",
+					bookingId, isAdmin ? "Admin" : "Guest", userId);
 
 				return true;
 			}
@@ -690,6 +714,7 @@ namespace BookingSystem.Application.Services
 				throw;
 			}
 		}
+
 
 		public async Task<bool> CheckInAsync(int bookingId, int hostId)
 		{
@@ -708,18 +733,22 @@ namespace BookingSystem.Application.Services
 			}
 
 			var roles = await _userManager.GetRolesAsync(host);
-			if (!roles.Contains("Admin") && booking.Homestay.OwnerId != hostId)
+			var isAdmin = roles.Contains("Admin");
+
+			// Chỉ cho phép Host của homestay hoặc Admin thực hiện
+			if (!isAdmin && booking.Homestay.OwnerId != hostId)
 			{
 				throw new BadRequestException("You do not have permission to check in this booking.");
 			}
 
-			if (booking.BookingStatus != BookingStatus.Confirmed)
+			// Nếu không phải Admin thì chỉ được check-in khi booking ở trạng thái Confirmed
+			if (!isAdmin && booking.BookingStatus != BookingStatus.Confirmed)
 			{
 				throw new BadRequestException("Only confirmed bookings can be checked in.");
 			}
 
-			// Check if check-in date is today or in the past
-			if (booking.CheckInDate.Date > DateTime.UtcNow.Date)
+			// Nếu không phải Admin thì không được check-in trước ngày CheckIn
+			if (!isAdmin && booking.CheckInDate.Date > DateTime.UtcNow.Date)
 			{
 				throw new BadRequestException("Cannot check in before the check-in date.");
 			}
@@ -734,7 +763,8 @@ namespace BookingSystem.Application.Services
 				await _bookingRepository.SaveChangesAsync();
 
 				await _unitOfWork.CommitTransactionAsync();
-				_logger.LogInformation("Booking {BookingId} checked in successfully.", bookingId);
+				_logger.LogInformation("Booking {BookingId} checked in successfully by {Role} {UserId}.",
+					bookingId, isAdmin ? "Admin" : "Host", hostId);
 
 				return true;
 			}
@@ -745,6 +775,7 @@ namespace BookingSystem.Application.Services
 				throw;
 			}
 		}
+
 
 		public async Task<bool> CheckOutAsync(int bookingId, int hostId)
 		{
@@ -763,12 +794,16 @@ namespace BookingSystem.Application.Services
 			}
 
 			var roles = await _userManager.GetRolesAsync(host);
-			if (!roles.Contains("Admin") && booking.Homestay.OwnerId != hostId)
+			bool isAdmin = roles.Contains("Admin");
+
+			// ✅ Admin có toàn quyền, các role khác phải là chủ homestay
+			if (!isAdmin && booking.Homestay.OwnerId != hostId)
 			{
 				throw new BadRequestException("You do not have permission to check out this booking.");
 			}
 
-			if (booking.BookingStatus != BookingStatus.CheckedIn)
+			// ✅ Admin có thể bỏ qua giới hạn trạng thái nếu cần
+			if (!isAdmin && booking.BookingStatus != BookingStatus.CheckedIn)
 			{
 				throw new BadRequestException("Only checked-in bookings can be checked out.");
 			}
@@ -776,14 +811,16 @@ namespace BookingSystem.Application.Services
 			try
 			{
 				await _unitOfWork.BeginTransactionAsync();
+				_logger.LogInformation("Transaction started for booking {BookingId}.", bookingId);
 
 				booking.BookingStatus = BookingStatus.CheckedOut;
 				booking.UpdatedAt = DateTime.UtcNow;
+
 				_bookingRepository.Update(booking);
 				await _bookingRepository.SaveChangesAsync();
 
 				await _unitOfWork.CommitTransactionAsync();
-				_logger.LogInformation("Booking {BookingId} checked out successfully.", bookingId);
+				_logger.LogInformation("Booking {BookingId} checked out successfully by host {HostId}.", bookingId, hostId);
 
 				return true;
 			}
@@ -795,17 +832,34 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<bool> MarkAsCompletedAsync(int bookingId)
-		{
-			_logger.LogInformation("Marking booking {BookingId} as completed.", bookingId);
 
-			var booking = await _bookingRepository.GetByIdAsync(bookingId);
+		public async Task<bool> MarkAsCompletedAsync(int bookingId, int userId)
+		{
+			_logger.LogInformation("Marking booking {BookingId} as completed by user {UserId}.", bookingId, userId);
+
+			var booking = await _bookingRepository.GetByIdWithDetailsAsync(bookingId);
 			if (booking == null)
 			{
 				throw new NotFoundException($"Booking with ID {bookingId} not found.");
 			}
 
-			if (booking.BookingStatus != BookingStatus.CheckedOut)
+			var user = await _userManager.FindByIdAsync(userId.ToString());
+			if (user == null)
+			{
+				throw new NotFoundException($"User with ID {userId} not found.");
+			}
+
+			var roles = await _userManager.GetRolesAsync(user);
+			bool isAdmin = roles.Contains("Admin");
+
+			// ✅ Admin có toàn quyền, host thì phải là chủ homestay
+			if (!isAdmin && booking.Homestay.OwnerId != userId)
+			{
+				throw new BadRequestException("You do not have permission to complete this booking.");
+			}
+
+			// ✅ Admin có thể bỏ qua trạng thái, host thì không
+			if (!isAdmin && booking.BookingStatus != BookingStatus.CheckedOut)
 			{
 				throw new BadRequestException("Only checked-out bookings can be marked as completed.");
 			}
@@ -820,7 +874,7 @@ namespace BookingSystem.Application.Services
 				await _bookingRepository.SaveChangesAsync();
 
 				await _unitOfWork.CommitTransactionAsync();
-				_logger.LogInformation("Booking {BookingId} marked as completed successfully.", bookingId);
+				_logger.LogInformation("Booking {BookingId} marked as completed successfully by user {UserId}.", bookingId, userId);
 
 				return true;
 			}
@@ -832,62 +886,67 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
+
 		public async Task<bool> MarkAsNoShowAsync(int bookingId, int hostId)
-		{
-			_logger.LogInformation("Marking booking {BookingId} as no-show by host {HostId}.", bookingId, hostId);
+{
+	_logger.LogInformation("Marking booking {BookingId} as no-show by host {HostId}.", bookingId, hostId);
 
-			var booking = await _bookingRepository.GetByIdWithDetailsAsync(bookingId);
-			if (booking == null)
-			{
-				throw new NotFoundException($"Booking with ID {bookingId} not found.");
-			}
+	var booking = await _bookingRepository.GetByIdWithDetailsAsync(bookingId);
+	if (booking == null)
+	{
+		throw new NotFoundException($"Booking with ID {bookingId} not found.");
+	}
 
-			var host = await _userManager.FindByIdAsync(hostId.ToString());
-			if (host == null)
-			{
-				throw new NotFoundException($"Host with ID {hostId} not found.");
-			}
+	var host = await _userManager.FindByIdAsync(hostId.ToString());
+	if (host == null)
+	{
+		throw new NotFoundException($"Host with ID {hostId} not found.");
+	}
 
-			var roles = await _userManager.GetRolesAsync(host);
-			if (!roles.Contains("Admin") && booking.Homestay.OwnerId != hostId)
-			{
-				throw new BadRequestException("You do not have permission to mark this booking as no-show.");
-			}
+	var roles = await _userManager.GetRolesAsync(host);
+	bool isAdmin = roles.Contains("Admin");
 
-			if (booking.BookingStatus != BookingStatus.Confirmed)
-			{
-				throw new BadRequestException("Only confirmed bookings can be marked as no-show.");
-			}
+	// ✅ Admin có toàn quyền
+	if (!isAdmin && booking.Homestay.OwnerId != hostId)
+	{
+		throw new BadRequestException("You do not have permission to mark this booking as no-show.");
+	}
 
-			// Check if check-in date has passed
-			if (booking.CheckInDate.Date >= DateTime.UtcNow.Date)
-			{
-				throw new BadRequestException("Cannot mark as no-show before the check-in date has passed.");
-			}
+	// ✅ Admin có thể bỏ qua điều kiện trạng thái
+	if (!isAdmin && booking.BookingStatus != BookingStatus.Confirmed)
+	{
+		throw new BadRequestException("Only confirmed bookings can be marked as no-show.");
+	}
 
-			try
-			{
-				await _unitOfWork.BeginTransactionAsync();
+	// ✅ Admin có thể bỏ qua điều kiện ngày
+	if (!isAdmin && booking.CheckInDate.Date >= DateTime.UtcNow.Date)
+	{
+		throw new BadRequestException("Cannot mark as no-show before the check-in date has passed.");
+	}
 
-				booking.BookingStatus = BookingStatus.NoShow;
-				booking.UpdatedAt = DateTime.UtcNow;
-				_bookingRepository.Update(booking);
-				await _bookingRepository.SaveChangesAsync();
+	try
+	{
+		await _unitOfWork.BeginTransactionAsync();
 
-				// TODO: Apply no-show penalty/fee
+		booking.BookingStatus = BookingStatus.NoShow;
+		booking.UpdatedAt = DateTime.UtcNow;
+		_bookingRepository.Update(booking);
+		await _bookingRepository.SaveChangesAsync();
 
-				await _unitOfWork.CommitTransactionAsync();
-				_logger.LogInformation("Booking {BookingId} marked as no-show successfully.", bookingId);
+		// TODO: Apply no-show penalty/fee
 
-				return true;
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error occurred while marking booking {BookingId} as no-show.", bookingId);
-				await _unitOfWork.RollbackTransactionAsync();
-				throw;
-			}
-		}
+		await _unitOfWork.CommitTransactionAsync();
+		_logger.LogInformation("Booking {BookingId} marked as no-show successfully by host {HostId}.", bookingId, hostId);
+
+		return true;
+	}
+	catch (Exception ex)
+	{
+		_logger.LogError(ex, "Error occurred while marking booking {BookingId} as no-show.", bookingId);
+		await _unitOfWork.RollbackTransactionAsync();
+		throw;
+	}
+}
 
 		public async Task<bool> IsHomestayAvailableAsync(
 			int homestayId,

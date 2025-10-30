@@ -11,6 +11,8 @@ using Microsoft.Extensions.Logging;
 using BookingSystem.Application.DTOs.PaymentGatewayDTO;
 using BookingSystem.Application.Factories;
 using BookingSystem.Domain.Base;
+using BookingSystem.Domain.Base.Filter;
+using BookingSystem.Application.DTOs.AmenityDTO;
 
 namespace BookingSystem.Application.Services
 {
@@ -53,6 +55,23 @@ namespace BookingSystem.Application.Services
 				ipAddress = "127.0.0.1";
 			}
 			return ipAddress ?? "127.0.0.1";
+		}
+
+		public async Task<PagedResult<PaymentDto>> GetAllPaymentAsync(PaymentFilter paymentFilter, int? userId = null)
+		{
+			var payments = await _paymentRepository.GetAllPaymentAsync(paymentFilter, userId);
+			var paymentDtos = _mapper.Map<List<PaymentDto>>(payments.Items);
+
+			_logger.LogInformation("Retrieved {Count} payments.", paymentDtos.Count);
+
+			return new PagedResult<PaymentDto>
+			{
+				Items = paymentDtos,
+				TotalCount = payments.TotalCount,
+				PageNumber = payments.PageNumber,
+				PageSize = payments.PageSize,
+				TotalPages = payments.TotalPages
+			};
 		}
 
 		public async Task<PaymentUrlResponseDto> CreateOnlinePaymentAsync(int userId, CreateOnlinePaymentDto request)
@@ -168,10 +187,7 @@ namespace BookingSystem.Application.Services
 
 			try
 			{
-				// Get payment gateway service
 				var gatewayService = _paymentGatewayFactory.GetPaymentGateway(paymentMethod);
-
-				// Process callback
 				var callbackResult = await gatewayService.ProcessCallbackAsync(callbackData);
 
 				if (!int.TryParse(callbackResult.OrderId, out var bookingId))
@@ -179,15 +195,32 @@ namespace BookingSystem.Application.Services
 					throw new BadRequestException("Invalid booking ID in callback");
 				}
 
-				// Find pending payment for this booking
 				var payments = await _paymentRepository.GetByBookingIdAsync(bookingId);
+
+				// TÌM PAYMENT ĐÃ COMPLETED VỚI CÙNG TRANSACTION ID
+				var completedPayment = payments
+					.Where(p => p.PaymentStatus == PaymentStatus.Completed &&
+							   p.TransactionId == callbackResult.TransactionId)
+					.FirstOrDefault();
+
+				if (completedPayment != null)
+				{
+					_logger.LogInformation("Payment {PaymentId} with transaction {TransactionId} already processed",
+						completedPayment.Id, callbackResult.TransactionId);
+					return _mapper.Map<PaymentDto>(completedPayment);
+				}
+
+				// TÌM PENDING/PROCESSING PAYMENT
 				var payment = payments
-					.Where(p => p.PaymentStatus == PaymentStatus.Processing || p.PaymentStatus == PaymentStatus.Pending)
+					.Where(p => p.PaymentStatus == PaymentStatus.Processing ||
+							   p.PaymentStatus == PaymentStatus.Pending)
 					.OrderByDescending(p => p.CreatedAt)
 					.FirstOrDefault();
 
 				if (payment == null)
 				{
+					_logger.LogWarning("No pending payment found for booking {BookingId}, transaction {TransactionId}",
+						bookingId, callbackResult.TransactionId);
 					throw new NotFoundException($"No pending payment found for booking {bookingId}");
 				}
 
@@ -195,28 +228,30 @@ namespace BookingSystem.Application.Services
 
 				if (callbackResult.Success)
 				{
-					// Payment successful
 					payment.PaymentStatus = PaymentStatus.Completed;
 					payment.TransactionId = callbackResult.TransactionId;
 					payment.PaymentGatewayId = callbackResult.TransactionId;
 					payment.ProcessedAt = callbackResult.TransactionDate;
-					payment.PaymentNotes = (payment.PaymentNotes ?? "") + $"\nBank: {callbackResult.BankCode}, Response: {callbackResult.Message}";
+					payment.PaymentNotes = (payment.PaymentNotes ?? "") +
+						$"\nBank: {callbackResult.BankCode}, Response: {callbackResult.Message}";
 					payment.UpdatedAt = DateTime.UtcNow;
 
 					_paymentRepository.Update(payment);
 					await _paymentRepository.SaveChangesAsync();
 
-					// Check if booking is fully paid and update booking status
 					var booking = await _bookingRepository.GetByIdWithDetailsAsync(bookingId);
 					if (booking != null)
 					{
-						var totalPaid = booking.Payments
+						var allPayments = await _paymentRepository.GetByBookingIdAsync(bookingId);
+						var totalPaid = allPayments
 							.Where(p => p.PaymentStatus == PaymentStatus.Completed)
 							.Sum(p => p.PaymentAmount);
 
+						_logger.LogInformation("Booking {BookingId} payment status: {TotalPaid}/{TotalAmount}",
+							bookingId, totalPaid, booking.TotalAmount);
+
 						if (totalPaid >= booking.TotalAmount && booking.BookingStatus == BookingStatus.Pending)
 						{
-							// Auto-confirm booking if instant book is enabled
 							if (booking.Homestay.IsInstantBook)
 							{
 								booking.BookingStatus = BookingStatus.Confirmed;
@@ -228,15 +263,13 @@ namespace BookingSystem.Application.Services
 							}
 						}
 					}
-
-					_logger.LogInformation("Payment {PaymentId} processed successfully", payment.Id);
 				}
 				else
 				{
-					// Payment failed
 					payment.PaymentStatus = PaymentStatus.Failed;
 					payment.FailureReason = callbackResult.Message;
-					payment.PaymentNotes = (payment.PaymentNotes ?? "") + $"\nFailed: {callbackResult.Message}, Code: {callbackResult.ResponseCode}";
+					payment.PaymentNotes = (payment.PaymentNotes ?? "") +
+						$"\nFailed: {callbackResult.Message}, Code: {callbackResult.ResponseCode}";
 					payment.UpdatedAt = DateTime.UtcNow;
 
 					_paymentRepository.Update(payment);
@@ -246,7 +279,6 @@ namespace BookingSystem.Application.Services
 				}
 
 				await _unitOfWork.CommitTransactionAsync();
-
 				return _mapper.Map<PaymentDto>(payment);
 			}
 			catch (Exception ex)
@@ -337,7 +369,24 @@ namespace BookingSystem.Application.Services
 				throw new NotFoundException($"Payment with ID {request.PaymentId} not found.");
 			}
 
-			if (payment.PaymentStatus != PaymentStatus.Pending && payment.PaymentStatus != PaymentStatus.Processing)
+			// KIỂM TRA NẾU PAYMENT ĐÃ ĐƯỢC XỬ LÝ THÀNH CÔNG RỒI
+			if (payment.PaymentStatus == PaymentStatus.Completed)
+			{
+				_logger.LogInformation("Payment {PaymentId} is already completed. Returning existing result.", request.PaymentId);
+				return _mapper.Map<PaymentDto>(payment);
+			}
+
+			// KIỂM TRA NẾU PAYMENT ĐÃ FAILED HOẶC REFUNDED
+			if (payment.PaymentStatus == PaymentStatus.Failed ||
+				payment.PaymentStatus == PaymentStatus.Refunded ||
+				payment.PaymentStatus == PaymentStatus.PartiallyRefunded)
+			{
+				throw new BadRequestException($"Cannot process payment with status {payment.PaymentStatus}.");
+			}
+
+			// CHỈ XỬ LÝ NẾU ĐANG Ở TRẠNG THÁI PENDING HOẶC PROCESSING
+			if (payment.PaymentStatus != PaymentStatus.Pending &&
+				payment.PaymentStatus != PaymentStatus.Processing)
 			{
 				throw new BadRequestException("Only pending or processing payments can be processed.");
 			}
@@ -346,6 +395,7 @@ namespace BookingSystem.Application.Services
 			{
 				await _unitOfWork.BeginTransactionAsync();
 
+				// Cập nhật thông tin payment
 				payment.PaymentStatus = PaymentStatus.Completed;
 				payment.TransactionId = request.TransactionId;
 				payment.PaymentGatewayId = request.PaymentGatewayId;
@@ -356,10 +406,17 @@ namespace BookingSystem.Application.Services
 				_paymentRepository.Update(payment);
 				await _paymentRepository.SaveChangesAsync();
 
+				// Kiểm tra và cập nhật trạng thái booking
 				var booking = payment.Booking;
-				var totalPaid = booking.Payments
+
+				// QUAN TRỌNG: Refresh lại danh sách payments từ DB để đảm bảo tính chính xác
+				var allPayments = await _paymentRepository.GetByBookingIdAsync(booking.Id);
+				var totalPaid = allPayments
 					.Where(p => p.PaymentStatus == PaymentStatus.Completed)
 					.Sum(p => p.PaymentAmount);
+
+				_logger.LogInformation("Booking {BookingId}: Total amount = {TotalAmount}, Total paid = {TotalPaid}",
+					booking.Id, booking.TotalAmount, totalPaid);
 
 				if (totalPaid >= booking.TotalAmount && booking.BookingStatus == BookingStatus.Pending)
 				{
@@ -369,7 +426,18 @@ namespace BookingSystem.Application.Services
 						booking.UpdatedAt = DateTime.UtcNow;
 						_bookingRepository.Update(booking);
 						await _bookingRepository.SaveChangesAsync();
+
+						_logger.LogInformation("Booking {BookingId} auto-confirmed after full payment.", booking.Id);
 					}
+					else
+					{
+						_logger.LogInformation("Booking {BookingId} is fully paid but requires manual confirmation by host.", booking.Id);
+					}
+				}
+				else if (totalPaid < booking.TotalAmount)
+				{
+					_logger.LogInformation("Booking {BookingId} is partially paid. Remaining: {Remaining}",
+						booking.Id, booking.TotalAmount - totalPaid);
 				}
 
 				await _unitOfWork.CommitTransactionAsync();

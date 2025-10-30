@@ -1,6 +1,9 @@
 ﻿using BookingSystem.Application.Contracts;
+using BookingSystem.Application.DTOs.AmenityDTO;
 using BookingSystem.Application.DTOs.PaymentDTO;
 using BookingSystem.Application.Models.Responses;
+using BookingSystem.Domain.Base;
+using BookingSystem.Domain.Base.Filter;
 using BookingSystem.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -31,6 +34,33 @@ namespace BookingSystem.Controllers
 				throw new UnauthorizedAccessException("User ID not found in token.");
 
 			return int.Parse(userIdClaim);
+		}
+
+		[HttpGet("my-payments")]
+		public async Task<ActionResult<ApiResponse<PagedResult<PaymentDto>>>> GetMyPayments([FromQuery] PaymentFilter paymentFilter)
+		{
+			var userId = GetCurrentUserId();
+			var payments = await _paymentService.GetAllPaymentAsync(paymentFilter, userId);
+
+			return Ok(new ApiResponse<PagedResult<PaymentDto>>
+			{
+				Success = true,
+				Message = "Payments retrieved successfully",
+				Data = payments
+			});
+		}
+
+		[HttpGet]
+		public async Task<ActionResult<ApiResponse<PagedResult<PaymentDto>>>> GetAllPayment([FromQuery] PaymentFilter paymentFilter)
+		{
+			var payments = await _paymentService.GetAllPaymentAsync(paymentFilter);
+
+			return Ok(new ApiResponse<PagedResult<PaymentDto>>
+			{
+				Success = true,
+				Message = "Payments retrieved successfully",
+				Data = payments
+			});
 		}
 
 		/// <summary>
@@ -98,12 +128,8 @@ namespace BookingSystem.Controllers
 				var queryParams = Request.Query.ToDictionary(x => x.Key, x => x.Value.ToString());
 				var result = await _paymentService.ProcessPaymentCallbackAsync(PaymentMethod.VNPay, queryParams);
 
-				var success = result.PaymentStatus == PaymentStatus.Completed;
-
-				// Redirect to frontend payment result page
-				var redirectUrl = success
-					? $"{Request.Scheme}://{Request.Host}/payment-success?bookingId={result.BookingId}&paymentId={result.Id}&amount={result.PaymentAmount}"
-					: $"{Request.Scheme}://{Request.Host}/payment-failure?bookingId={result.BookingId}&reason={Uri.EscapeDataString(result.FailureReason ?? "Payment failed")}";
+				var queryString = string.Join("&", queryParams.Select(kv => $"{kv.Key}={Uri.EscapeDataString(kv.Value)}"));
+				var redirectUrl = $"{Request.Scheme}://{Request.Host}/payment-callback?{queryString}";
 
 				return Redirect(redirectUrl);
 			}
@@ -140,6 +166,7 @@ namespace BookingSystem.Controllers
 		/// </summary>
 		/// <param name="dto">Payment details</param>
 		[HttpPost]
+		[Authorize]
 		public async Task<ActionResult<ApiResponse<PaymentDto>>> CreatePayment(
 			[FromBody] CreatePaymentDto dto)
 		{
