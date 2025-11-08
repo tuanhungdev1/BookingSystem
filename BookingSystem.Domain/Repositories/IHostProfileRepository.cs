@@ -13,5 +13,8 @@ namespace BookingSystem.Domain.Repositories
 	{
         Task<HostProfile?> GetByUserIdAsync(int userId);
 		Task<PagedResult<HostProfile>> GetPagedHostProfilesAsync(HostProfileFilter hostProfileFilter);
+		Task<int> CountApprovedHostsAsync();
+		Task<int> CountActiveHostsAsync(DateTime since);
+		Task<int> CountHostsByRegisteredDateAsync(DateTime startDate, DateTime endDate);
 	}
 }

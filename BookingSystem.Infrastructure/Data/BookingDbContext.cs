@@ -30,6 +30,7 @@ namespace BookingSystem.Infrastructure.Data
 		public DbSet<Coupon> Coupons { get; set; }
 		public DbSet<CouponUsage> CouponUsages { get; set; }
 		public DbSet<CouponHomestay> CouponHomestays { get; set; }
+		public DbSet<HostProfile> HostProfiles { get; set; }
 
 		protected override void OnModelCreating(ModelBuilder builder)
 		{

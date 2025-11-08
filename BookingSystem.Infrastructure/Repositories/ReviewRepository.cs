@@ -2,6 +2,7 @@
 using BookingSystem.Domain.Base.Filter;
 using BookingSystem.Domain.Base.Shared;
 using BookingSystem.Domain.Entities;
+using BookingSystem.Domain.Exceptions;
 using BookingSystem.Domain.Repositories;
 using BookingSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,50 @@ namespace BookingSystem.Infrastructure.Repositories
 		{
 		}
 
+		public async Task<bool> HasUserMarkedHelpfulAsync(int userId, int reviewId)
+		{
+			return await _context.Set<ReviewHelpful>()
+				.AnyAsync(rh => rh.UserId == userId && rh.ReviewId == reviewId);
+		}
+
+		public async Task<bool> ToggleHelpfulAsync(int userId, int reviewId)
+		{
+			var review = await _dbSet
+				.Include(r => r.ReviewHelpfuls)
+				.FirstOrDefaultAsync(r => r.Id == reviewId && r.IsVisible);
+
+			if (review == null)
+				throw new NotFoundException($"Review with ID {reviewId} not found or not visible.");
+
+			var helpful = await _context.Set<ReviewHelpful>()
+				.FirstOrDefaultAsync(rh => rh.UserId == userId && rh.ReviewId == reviewId);
+
+			if (helpful != null)
+			{
+				// HỦY (Unlike)
+				_context.Set<ReviewHelpful>().Remove(helpful);
+				review.HelpfulCount--;
+			}
+			else
+			{
+				// THÊM (Like)
+				_context.Set<ReviewHelpful>().Add(new ReviewHelpful
+				{
+					UserId = userId,
+					ReviewId = reviewId
+				});
+				review.HelpfulCount++;
+			}
+
+			review.UpdatedAt = DateTime.UtcNow;
+			_dbSet.Update(review);
+
+			// Chỉ SaveChanges, KHÔNG bắt transaction
+			await _context.SaveChangesAsync();
+
+			return helpful == null; // true = đã thêm, false = đã hủy
+		}
+
 		public async Task<Review?> GetByIdWithDetailsAsync(int id)
 		{
 			return await _dbSet
@@ -23,6 +68,37 @@ namespace BookingSystem.Infrastructure.Repositories
 				.Include(r => r.Homestay)
 					.ThenInclude(h => h.Owner)
 				.FirstOrDefaultAsync(r => r.Id == id);
+		}
+
+		public async Task<PagedResult<Review>> GetReviewsByHostIdAsync(int hostId, ReviewFilter filter)
+		{
+			var query = _dbSet
+				.Include(r => r.Reviewer)
+				.Include(r => r.Reviewee)
+				.Include(r => r.Homestay)
+					.ThenInclude(h => h.Owner)
+				.Include(r => r.Booking)
+				.Where(r => r.Homestay.OwnerId == hostId) // Chỉ lấy review của homestay do host sở hữu
+				.AsQueryable();
+
+			// Áp dụng filter (giống như GetAllReviewsAsync)
+			query = ApplyFilters(query, filter);
+			query = ApplySorting(query, filter);
+
+			var totalCount = await query.CountAsync();
+
+			var items = await query
+				.Skip((filter.PageNumber - 1) * filter.PageSize)
+				.Take(filter.PageSize)
+				.ToListAsync();
+
+			return new PagedResult<Review>
+			{
+				Items = items,
+				TotalCount = totalCount,
+				PageNumber = filter.PageNumber,
+				PageSize = filter.PageSize
+			};
 		}
 
 		public async Task<PagedResult<Review>> GetAllReviewsAsync(ReviewFilter filter)

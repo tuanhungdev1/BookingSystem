@@ -43,5 +43,6 @@ namespace BookingSystem.Domain.Entities
 		public virtual User Reviewee { get; set; } = null!;
 		public virtual Booking Booking { get; set; } = null!;
 		public virtual Homestay Homestay { get; set; } = null!;
+		public ICollection<ReviewHelpful> ReviewHelpfuls { get; set; } = new List<ReviewHelpful>();
 	}
 }

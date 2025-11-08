@@ -8,6 +8,7 @@ namespace BookingSystem.Application.Contracts
 	public interface IPaymentService
 	{
 		Task<PagedResult<PaymentDto>> GetAllPaymentAsync(PaymentFilter paymentFilter, int? userId = null);
+		Task<PagedResult<PaymentDto>> GetPaymentsByHostIdAsync(int hostId, PaymentFilter filter);
 		// Online payment methods
 		Task<PaymentUrlResponseDto> CreateOnlinePaymentAsync(int userId, CreateOnlinePaymentDto request);
 		Task<PaymentDto> ProcessPaymentCallbackAsync(PaymentMethod paymentMethod, Dictionary<string, string> callbackData);

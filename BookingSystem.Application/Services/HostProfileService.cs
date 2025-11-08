@@ -37,37 +37,36 @@ namespace BookingSystem.Application.Services
 			_userManager = userManager;
 		}
 
-		public async Task<bool> UpdateHostProfileAsync(int id, UpdateHostProfileDto dto)
+		public async Task<bool> UpdateHostProfileAsync(int hostProfileId, int currentUserId, UpdateHostProfileDto dto)
 		{
-			var user = await _userManager.FindByIdAsync(id.ToString());
+			var host = await _hostProfileRepository.GetByIdAsync(hostProfileId);
 
-			// Check if user exists
-			if (user == null)
+			// Check if host exists
+			if (host == null)
 			{
-				_logger.LogWarning($"User with ID {id} not found.");
-				throw new NotFoundException($"User with ID: {id} not found.");
-			}
-			// Check if user is a host
-			if (!await _userManager.IsInRoleAsync(user, "Host"))
-			{
-				_logger.LogWarning($"User with ID {id} is not a host.");
-				throw new UnauthorizedAccessException("Only hosts can update their profiles.");
+				_logger.LogWarning($"Host with ID {hostProfileId} not found.");
+				throw new NotFoundException($"Host with ID: {hostProfileId} not found.");
 			}
 
-			// Retrieve host profile
-			var hostProfile = await _hostProfileRepository.GetByUserIdAsync(id);
-			if (hostProfile == null)
+			var user = await _userManager.FindByIdAsync(currentUserId.ToString());
+			var roles = await _userManager.GetRolesAsync(user);
+			var isHost = roles.Any(r => r.Equals("Host", StringComparison.OrdinalIgnoreCase));
+			var isAdmin = roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+
+
+			var isCurrentUser = currentUserId == user.Id;
+			if (!isCurrentUser && !isHost && !isAdmin)
 			{
-				_logger.LogWarning($"Host profile for user ID {id} not found.");
-				throw new NotFoundException($"Host profile for user ID: {id} not found.");
+				_logger.LogWarning("User with ID {CurrentUserId} is not authorized to update host profile {HostUserId}.", currentUserId, hostProfileId);
+				throw new UnauthorizedAccessException("You do not have permission to update this host profile.");
 			}
 
 			// Map updated fields from DTO to entity
-			_mapper.Map(dto, hostProfile);
-			hostProfile.UpdatedAt = DateTime.UtcNow;
-			_hostProfileRepository.Update(hostProfile);
+			_mapper.Map(dto, host);
+			host.UpdatedAt = DateTime.UtcNow;
+			_hostProfileRepository.Update(host);
 			await _unitOfWork.SaveChangesAsync();
-			_logger.LogInformation($"Host profile for user ID {id} updated successfully.");
+			_logger.LogInformation($"Host with ID:  {hostProfileId} updated successfully.");
 			return true;
 		}
 
@@ -410,7 +409,7 @@ namespace BookingSystem.Application.Services
 			return true;
 		}
 
-		public async Task<HostProfileDto?> GetHostProfileByIdAsync(int userId)
+		public async Task<HostProfileDto?> GetHostProfileByIdAsync(int userId, int currentUserId)
 		{
 			var user = await _userManager.FindByIdAsync(userId.ToString());
 
@@ -421,11 +420,16 @@ namespace BookingSystem.Application.Services
 				throw new NotFoundException($"User with ID: {userId} not found.");
 			}
 
-			// Check if user is a host or admin
-			if (!await _userManager.IsInRoleAsync(user, "Host") && !await _userManager.IsInRoleAsync(user, "Admin"))
+			var roles = await _userManager.GetRolesAsync(user);
+			var isHost = roles.Any(r => r.Equals("Host", StringComparison.OrdinalIgnoreCase));
+			var isAdmin = roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+
+
+			var isCurrentUser = currentUserId == userId;
+			if (!isCurrentUser && !isHost && !isAdmin)
 			{
-				_logger.LogWarning($"User with ID {userId} is not a host or admin.");
-				throw new UnauthorizedAccessException("Only hosts or admins can access host profiles.");
+				_logger.LogWarning("User {CurrentUserId} attempted to access profile of user {UserId} without permission.", currentUserId, userId);
+				throw new UnauthorizedAccessException("You are not authorized to view this host profile.");
 			}
 
 			// Retrieve host profile
@@ -533,6 +537,26 @@ namespace BookingSystem.Application.Services
 					_logger.LogInformation($"Business license image uploaded successfully for host ID {hostProfile.Id}");
 				}
 
+				// Upload business license if provided
+				if (dto.TaxCodeDocumentFile != null)
+				{
+					var uploadResult = await _cloudinaryService.UploadImageAsync(
+						new ImageUploadDto
+						{
+							File = dto.TaxCodeDocumentFile,
+							Folder = $"{FolderImages.Lisenses}/{hostProfile.Id}"
+						}
+					);
+					if (!uploadResult.Success)
+					{
+						_logger.LogError($"Failed to upload tax code document image: {uploadResult.ErrorMessage}");
+						throw new Exception($"Failed to upload tax code document image: {uploadResult.ErrorMessage}");
+					}
+					hostProfile.TaxCodeDocumentUrl = uploadResult.Data.Url;
+					uploadedImages.Add(uploadResult.Data.PublicId);
+					_logger.LogInformation($"Tax code document image uploaded successfully for host ID {hostProfile.Id}");
+				}
+
 				_logger.LogInformation($"Host profile created successfully for user ID {dto.UserId}");
 				_hostProfileRepository.Update(hostProfile);
 
@@ -555,22 +579,29 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<bool> RemoveHostProfileAsync(int userId)
+		public async Task<bool> RemoveHostProfileAsync(int hostId, int currentUserId)
 		{
 			// Verify user existence
-			var user = await _userManager.FindByIdAsync(userId.ToString());
-			if (user == null)
-			{
-				_logger.LogWarning($"User with ID {userId} not found.");
-				throw new NotFoundException($"User with ID: {userId} not found.");
-			}
-
-			var hostProfile = await _hostProfileRepository.GetByUserIdAsync(userId);
+			var hostProfile = await _hostProfileRepository.GetByIdAsync(hostId);
 			if (hostProfile == null)
 			{
-				_logger.LogWarning($"Host profile for user ID {userId} not found.");
-				throw new NotFoundException($"Host profile for user ID: {userId} not found.");
+				_logger.LogWarning($"Host with ID {hostId} not found.");
+				throw new NotFoundException($"Host with ID: {hostId} not found.");
 			}
+
+			var user = await _userManager.FindByIdAsync(currentUserId.ToString());
+			var roles = await _userManager.GetRolesAsync(user);
+			var isHost = roles.Any(r => r.Equals("Host", StringComparison.OrdinalIgnoreCase));
+			var isAdmin = roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+
+
+			var isCurrentUser = currentUserId == user.Id;
+			if (!isCurrentUser && !isHost && !isAdmin)
+			{
+				_logger.LogWarning("User with ID {CurrentUserId} is not authorized to update host profile {HostUserId}.", currentUserId, hostId);
+				throw new UnauthorizedAccessException("You do not have permission to remove this host profile.");
+			}
+
 			try
 			{
 				await _unitOfWork.BeginTransactionAsync();
@@ -614,12 +645,12 @@ namespace BookingSystem.Application.Services
 
 				await _unitOfWork.SaveChangesAsync();
 				await _unitOfWork.CommitTransactionAsync();
-				_logger.LogInformation($"Host profile for user ID {userId} removed successfully.");
+				_logger.LogInformation($"Host profile for user ID {hostId} removed successfully.");
 				return true;
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, $"Error occurred while removing host profile for user ID {userId}.");
+				_logger.LogError(ex, $"Error occurred while removing host profile for user ID {hostId}.");
 				await _unitOfWork.RollbackTransactionAsync();
 				throw;
 			}

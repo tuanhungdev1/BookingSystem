@@ -30,6 +30,7 @@ namespace BookingSystem.Application.DI
 			services.AddScoped<VNPayService>();
 			services.AddScoped<IPaymentGatewayFactory, PaymentGatewayFactory>();
 			services.AddScoped<IPaymentService, PaymentService>();
+			services.AddScoped<IDashboardService, DashboardService>();
 			services.AddHttpContextAccessor();
 
 			return services;

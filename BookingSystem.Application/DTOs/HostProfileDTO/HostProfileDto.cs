@@ -1,4 +1,6 @@
-﻿namespace BookingSystem.Application.DTOs.HostProfileDTO
+﻿using BookingSystem.Domain.Enums;
+
+namespace BookingSystem.Application.DTOs.HostProfileDTO
 {
 	public class HostProfileDto
 	{
@@ -33,7 +35,7 @@
 		public bool IsActive { get; set; }
 		public bool IsSuperhost { get; set; }
 		public DateTime RegisteredAsHostAt { get; set; }
-		public string Status { get; set; } = string.Empty;
+		public HostStatus Status { get; set; } 
 
 		// Review
 		public int? ReviewedByAdminId { get; set; }

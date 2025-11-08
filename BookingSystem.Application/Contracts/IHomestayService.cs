@@ -16,6 +16,7 @@ namespace BookingSystem.Application.Contracts
 		// Basic CRUD
 		Task<HomestayDto?> GetByIdAsync(int id);
 		Task<HomestayDto> GetHomestayBySlugAsync(string slug);
+		Task<PagedResult<HomestayDto>> GetHomestaysByOwnerIdAsync(int ownerId, HomestayFilter filter);
 		Task<PagedResult<HomestayDto>> GetAllHomestayAsync(HomestayFilter filter);
 		Task<HomestayDto?> CreateAsync(int ownerId, CreateHomestayDto request);
 		Task<HomestayDto?> UpdateAsync(int homestayId, int ownerId, UpdateHomestayDto request);

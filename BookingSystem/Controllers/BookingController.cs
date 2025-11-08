@@ -154,7 +154,7 @@ namespace BookingSystem.Controllers
 		/// Lấy danh sách booking của user (Guest xem booking của mình)
 		/// </summary>
 		[HttpGet("my-bookings")]
-		[Authorize(Roles = "Guest,Admin")]
+		[Authorize]
 		public async Task<ActionResult<ApiResponse<PagedResult<BookingDto>>>> GetMyBookings(
 			[FromQuery] BookingFilter filter)
 		{

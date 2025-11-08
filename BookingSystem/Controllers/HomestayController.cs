@@ -60,8 +60,12 @@ namespace BookingSystem.Controllers
 		/// </summary>
 		[HttpGet]
 		[AllowAnonymous]
-		public async Task<ActionResult<ApiResponse<PagedResult<HomestayDto>>>> GetAll([FromQuery] HomestayFilter filter)
+		public async Task<ActionResult<ApiResponse<PagedResult<HomestayDto>>>> GetAll([FromQuery] HomestayFilter filter, [FromQuery] int[] propertyTypeIds)
 		{
+			if (propertyTypeIds != null && propertyTypeIds.Length > 0)
+			{
+				filter.PropertyTypeIds = string.Join(",", propertyTypeIds);
+			}
 			var homestays = await _homestayService.GetAllHomestayAsync(filter);
 			return Ok(new ApiResponse<PagedResult<HomestayDto>>
 			{
@@ -614,6 +618,30 @@ namespace BookingSystem.Controllers
 				Success = true,
 				Message = "Homestay retrieved successfully",
 				Data = homestay
+			});
+		}
+
+		[HttpGet("my-homestays")]
+		[Authorize(Roles = "Host,Admin")]
+		public async Task<ActionResult<ApiResponse<PagedResult<HomestayDto>>>> GetMyHomestays([FromQuery] HomestayFilter filter)
+		{
+			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+			{
+				return Unauthorized(new ApiResponse<PagedResult<HomestayDto>>
+				{
+					Success = false,
+					Message = "Invalid user authentication"
+				});
+			}
+
+			var homestays = await _homestayService.GetHomestaysByOwnerIdAsync(userId, filter);
+
+			return Ok(new ApiResponse<PagedResult<HomestayDto>>
+			{
+				Success = true,
+				Message = "Homestays retrieved successfully",
+				Data = homestays
 			});
 		}
 

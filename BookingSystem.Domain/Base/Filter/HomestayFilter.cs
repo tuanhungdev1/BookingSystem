@@ -53,16 +53,23 @@
 		public DateOnly? CheckInDate { get; set; }
 		public DateOnly? CheckOutDate { get; set; }
 
-		// Amenities filter (comma-separated amenity IDs)
+		
 		public string? AmenityIds { get; set; }
+		
+		public string? PropertyTypeIds { get; set; } 
 
-		// Date filters
+		public int? Adults { get; set; }
+		public int? Children { get; set; }
+		public int? Rooms { get; set; }
+		public bool? Pets { get; set; }
+
+		public double? MinRating { get; set; }
+
 		public DateTime? CreatedFrom { get; set; }
 		public DateTime? CreatedTo { get; set; }
 		public DateTime? ApprovedFrom { get; set; }
 		public DateTime? ApprovedTo { get; set; }
 
-		// Sorting
 		public string? SortBy { get; set; } = "CreatedAt";
 		public string? SortDirection { get; set; } = "desc";
 	}

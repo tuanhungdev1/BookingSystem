@@ -29,7 +29,7 @@ namespace BookingSystem.Infrastructure.DI
 			services.AddScoped<ICouponHomestaysRepository, CouponHomestaysRepository>();
 			services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
 			services.AddScoped<IPaymentRepository, PaymentRepository>();
-			
+			services.AddScoped<IDashboardRepository, DashboardRepository>();
 
 
 			return services;

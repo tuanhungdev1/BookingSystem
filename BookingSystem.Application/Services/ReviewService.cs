@@ -41,6 +41,75 @@ namespace BookingSystem.Application.Services
 			_logger = logger;
 		}
 
+		public async Task<HelpfulToggleResult> ToggleHelpfulCountAsync(int userId, int reviewId)
+		{
+			_logger.LogInformation("User {UserId} toggling helpful for review {ReviewId}.", userId, reviewId);
+
+			var user = await _userManager.FindByIdAsync(userId.ToString());
+			if (user == null)
+				throw new NotFoundException($"User with ID {userId} not found.");
+
+			// Kiểm tra quyền: chỉ guest đã đăng nhập
+			//var roles = await _userManager.GetRolesAsync(user);
+			//if (!roles.Contains("Host") && !roles.Contains("Admin"))
+			//	throw new BadRequestException("Only authenticated users can mark reviews as helpful.");
+
+			try
+			{
+				await _unitOfWork.BeginTransactionAsync();
+
+				var isNowHelpful = await _reviewRepository.ToggleHelpfulAsync(userId, reviewId);
+
+				await _unitOfWork.CommitTransactionAsync();
+
+				var review = await _reviewRepository.GetByIdAsync(reviewId);
+				return new HelpfulToggleResult
+				{
+					IsNowHelpful = isNowHelpful,
+					HelpfulCount = review!.HelpfulCount
+				};
+			}
+			catch (Exception ex)
+			{
+				await _unitOfWork.RollbackTransactionAsync();
+				_logger.LogError(ex, "Error toggling helpful for review {ReviewId}", reviewId);
+				throw;
+			}
+		}
+
+		public async Task<PagedResult<ReviewDto>> GetReviewsByHostIdAsync(int hostId, ReviewFilter filter)
+		{
+			_logger.LogInformation("Fetching all reviews for homestays owned by host {HostId}.", hostId);
+
+			// Kiểm tra host tồn tại
+			var host = await _userManager.FindByIdAsync(hostId.ToString());
+			if (host == null)
+			{
+				throw new NotFoundException($"Host with ID {hostId} not found.");
+			}
+
+			// Kiểm tra quyền
+			var roles = await _userManager.GetRolesAsync(host);
+			if (!roles.Contains("Host") && !roles.Contains("Admin"))
+			{
+				throw new BadRequestException("User does not have Host or Admin role.");
+			}
+
+			// Lấy danh sách review
+			var pagedReviews = await _reviewRepository.GetReviewsByHostIdAsync(hostId, filter);
+			var reviewDtos = _mapper.Map<List<ReviewDto>>(pagedReviews.Items);
+
+			_logger.LogInformation("Retrieved {Count} reviews for host {HostId}.", reviewDtos.Count, hostId);
+
+			return new PagedResult<ReviewDto>
+			{
+				Items = reviewDtos,
+				TotalCount = pagedReviews.TotalCount,
+				PageNumber = pagedReviews.PageNumber,
+				PageSize = pagedReviews.PageSize
+			};
+		}
+
 		public async Task<ReviewDto> CreateReviewAsync(int reviewerId, CreateReviewDto request)
 		{
 			_logger.LogInformation("Creating review for booking {BookingId} by reviewer {ReviewerId}.",
@@ -108,6 +177,8 @@ namespace BookingSystem.Application.Services
 
 				await _reviewRepository.AddAsync(review);
 				await _reviewRepository.SaveChangesAsync();
+
+				await RecalculateHomestayRatingAsync(review.HomestayId);
 
 				await _unitOfWork.CommitTransactionAsync();
 				_logger.LogInformation("Review {ReviewId} created successfully.", review.Id);
@@ -195,7 +266,7 @@ namespace BookingSystem.Application.Services
 				review.UpdatedAt = DateTime.UtcNow;
 				_reviewRepository.Update(review);
 				await _reviewRepository.SaveChangesAsync();
-
+				await RecalculateHomestayRatingAsync(review.HomestayId);
 				await _unitOfWork.CommitTransactionAsync();
 				_logger.LogInformation("Review {ReviewId} updated successfully.", reviewId);
 
@@ -238,10 +309,11 @@ namespace BookingSystem.Application.Services
 			try
 			{
 				await _unitOfWork.BeginTransactionAsync();
+				var homestayId = review.HomestayId;
 
 				_reviewRepository.Remove(review);
 				await _reviewRepository.SaveChangesAsync();
-
+				await RecalculateHomestayRatingAsync(homestayId);
 				await _unitOfWork.CommitTransactionAsync();
 				_logger.LogInformation("Review {ReviewId} deleted successfully.", reviewId);
 
@@ -537,7 +609,7 @@ namespace BookingSystem.Application.Services
 
 				_reviewRepository.Update(review);
 				await _reviewRepository.SaveChangesAsync();
-
+				await RecalculateHomestayRatingAsync(review.HomestayId);
 				await _unitOfWork.CommitTransactionAsync();
 				_logger.LogInformation("Review {ReviewId} visibility toggled to {IsVisible}.",
 					reviewId, review.IsVisible);
@@ -639,6 +711,50 @@ namespace BookingSystem.Application.Services
 			ValidateRating(valueForMoney, nameof(valueForMoney));
 			ValidateRating(communication, nameof(communication));
 			ValidateRating(checkIn, nameof(checkIn));
+		}
+
+		private async Task RecalculateHomestayRatingAsync(int homestayId)
+		{
+			_logger.LogInformation("Recalculating rating for homestay {HomestayId}.", homestayId);
+
+			var homestay = await _homestayRepository.GetByIdAsync(homestayId);
+			if (homestay == null)
+			{
+				_logger.LogWarning("Homestay {HomestayId} not found for rating recalculation.", homestayId);
+				return;
+			}
+
+			// Lấy tất cả review visible của homestay này
+			var reviews = await _reviewRepository.GetHomestayReviewsAsync(homestayId, new ReviewFilter
+			{
+				IsVisible = true,
+				PageNumber = 1,
+				PageSize = int.MaxValue // Lấy tất cả
+			});
+
+			// Tính toán
+			var visibleReviews = reviews.Items.Where(r => r.IsVisible).ToList();
+			homestay.TotalReviews = visibleReviews.Count;
+
+			if (visibleReviews.Any())
+			{
+				homestay.RatingAverage = Math.Round(
+					visibleReviews.Average(r => r.OverallRating),
+					1 // Làm tròn 1 chữ số thập phân
+				);
+			}
+			else
+			{
+				homestay.RatingAverage = 0.0;
+			}
+
+			_homestayRepository.Update(homestay);
+			await _homestayRepository.SaveChangesAsync();
+
+			_logger.LogInformation(
+				"Homestay {HomestayId} rating updated: {Rating} ({Count} reviews).",
+				homestayId, homestay.RatingAverage, homestay.TotalReviews
+			);
 		}
 
 		private void ValidateRating(int rating, string ratingName)

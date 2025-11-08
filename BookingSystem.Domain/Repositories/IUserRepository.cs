@@ -8,5 +8,8 @@ namespace BookingSystem.Domain.Repositories
 	{
 		Task<User?> GetByRefreshTokenAsync(string refreshToken);
 		Task<PagedResult<User>> GetPagedAsync(UserFilter filter);
+
+		Task<int> CountActiveUsersAsync(DateTime since);
+		Task<int> CountUsersByCreatedDateAsync(DateTime startDate, DateTime endDate);
 	}
 }

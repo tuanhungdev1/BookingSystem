@@ -21,6 +21,7 @@ namespace BookingSystem.Domain.Base
 		public ICouponUsageRepository CouponUsageRepository { get; }
 		public ICouponHomestaysRepository CouponHomestaysRepository { get; }
 		public IUserPreferenceRepository UserPreferenceRepository { get; }
+		public IDashboardRepository DashboardRepository { get; }
 
 		Task ExecuteInTransactionAsync(Func<Task> action);
 		Task SaveChangesAsync();

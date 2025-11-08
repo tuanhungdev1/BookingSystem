@@ -39,10 +39,19 @@ namespace BookingSystem.Controllers
 		/// Lấy thông tin Host Profile theo User ID (Host hoặc Admin)
 		/// </summary>
 		[HttpGet("{userId:int}")]
-		[Authorize(Roles = "Host,Admin")]
+		[Authorize]
 		public async Task<ActionResult<ApiResponse<HostProfileDto>>> GetHostProfileById(int userId)
 		{
-			var hostProfile = await _hostProfileService.GetHostProfileByIdAsync(userId);
+			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var currentUserId))
+			{
+				return Unauthorized(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Invalid admin credentials"
+				});
+			}
+			var hostProfile = await _hostProfileService.GetHostProfileByIdAsync(userId, currentUserId);
 			if (hostProfile == null)
 			{
 				return NotFound(new ApiResponse<HostProfileDto>
@@ -80,10 +89,19 @@ namespace BookingSystem.Controllers
 		/// Cập nhật thông tin Host Profile (Host only)
 		/// </summary>
 		[HttpPut("{id:int}")]
-		[Authorize(Roles = "Host")]
+		[Authorize]
 		public async Task<ActionResult<ApiResponse<object>>> UpdateHostProfile(int id, [FromBody] UpdateHostProfileDto request)
 		{
-			var success = await _hostProfileService.UpdateHostProfileAsync(id, request);
+			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var currentUserId))
+			{
+				return Unauthorized(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Invalid admin credentials"
+				});
+			}
+			var success = await _hostProfileService.UpdateHostProfileAsync(id,currentUserId, request);
 			if (!success)
 			{
 				return NotFound(new ApiResponse<object>
@@ -293,7 +311,17 @@ namespace BookingSystem.Controllers
 		[Authorize(Roles = "Admin,Host")]
 		public async Task<ActionResult<ApiResponse<object>>> RemoveHostProfile(int userId)
 		{
-			var success = await _hostProfileService.RemoveHostProfileAsync(userId);
+			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var currentUserId))
+			{
+				return Unauthorized(new ApiResponse<object>
+				{
+					Success = false,
+					Message = "Invalid admin credentials"
+				});
+			}
+
+			var success = await _hostProfileService.RemoveHostProfileAsync(userId, currentUserId);
 			return Ok(new ApiResponse<object>
 			{
 				Success = true,

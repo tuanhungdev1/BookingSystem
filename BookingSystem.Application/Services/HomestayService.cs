@@ -66,6 +66,35 @@ namespace BookingSystem.Application.Services
 
 		#region Basic CRUD Operations
 
+		public async Task<PagedResult<HomestayDto>> GetHomestaysByOwnerIdAsync(int ownerId, HomestayFilter filter)
+		{
+			_logger.LogInformation("Getting homestays for Owner ID {OwnerId} with filter.", ownerId);
+
+			// Validate owner exists
+			var owner = await _userManager.FindByIdAsync(ownerId.ToString());
+			if (owner == null)
+			{
+				_logger.LogWarning("Owner with ID {OwnerId} not found.", ownerId);
+				throw new NotFoundException($"Owner with ID {ownerId} not found.");
+			}
+
+			// Gán OwnerId vào filter để chỉ lấy homestay của host đó
+			filter.OwnerId = ownerId;
+
+			// Gọi repository để lấy danh sách phân trang
+			var pagedHomestays = await _homestayRepository.GetAllHomestayAsync(filter);
+
+			var homestayDtos = _mapper.Map<List<HomestayDto>>(pagedHomestays.Items);
+
+			return new PagedResult<HomestayDto>
+			{
+				Items = homestayDtos,
+				TotalCount = pagedHomestays.TotalCount,
+				PageSize = pagedHomestays.PageSize,
+				PageNumber = pagedHomestays.PageNumber
+			};
+		}
+
 		/// <summary>
 		/// Get detailed homestay information by Slug
 		/// </summary>
@@ -113,11 +142,16 @@ namespace BookingSystem.Application.Services
 			_logger.LogInformation("Getting all homestays with filter.");
 
 			var pagedHomestays = await _homestayRepository.GetAllHomestayAsync(filter);
-			var homestayDtos = _mapper.Map<List<HomestayDto>>(pagedHomestays.Items);
+			var homestays = new List<HomestayDto>();
+			foreach (var item in pagedHomestays.Items)
+			{
+				var homestay = _mapper.Map<HomestayDto>(item);
+				homestays.Add(homestay);
+			}
 
 			return new PagedResult<HomestayDto>
 			{
-				Items = homestayDtos,
+				Items = homestays,
 				TotalCount = pagedHomestays.TotalCount,
 				PageSize = pagedHomestays.PageSize,
 				PageNumber = pagedHomestays.PageNumber

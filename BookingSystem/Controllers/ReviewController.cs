@@ -22,6 +22,29 @@ namespace BookingSystem.Controllers
 			_reviewService = reviewService;
 		}
 
+		private int GetCurrentUserId()
+		{
+			var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+			if (string.IsNullOrEmpty(userIdClaim))
+				throw new UnauthorizedAccessException("User ID not found in token.");
+
+			return int.Parse(userIdClaim);
+		}
+
+		[HttpPost("{reviewId:int}/helpful")]
+		[Authorize]
+		public async Task<ActionResult<ApiResponse<HelpfulToggleResult>>> ToggleHelpful(int reviewId)
+		{
+			var userId = GetCurrentUserId();
+			var result = await _reviewService.ToggleHelpfulCountAsync(userId, reviewId);
+
+			return Ok(new ApiResponse<HelpfulToggleResult>
+			{
+				Success = true,
+				Message = result.IsNowHelpful ? "Marked as helpful" : "Helpful mark removed",
+				Data = result
+			});
+		}
 		/// <summary>
 		/// Tạo review mới (Guest sau khi hoàn thành booking)
 		/// </summary>
@@ -92,6 +115,22 @@ namespace BookingSystem.Controllers
 			{
 				Success = true,
 				Message = "Reviews retrieved successfully",
+				Data = reviews
+			});
+		}
+
+		[HttpGet("host")]
+		[Authorize(Roles = "Host, Admin")]
+		public async Task<ActionResult<ApiResponse<PagedResult<ReviewDto>>>> GetReviewsByHost(
+		[FromQuery] ReviewFilter filter)
+		{
+			var hostId = GetCurrentUserId();
+			var reviews = await _reviewService.GetReviewsByHostIdAsync(hostId, filter);
+
+			return Ok(new ApiResponse<PagedResult<ReviewDto>>
+			{
+				Success = true,
+				Message = "Host reviews retrieved successfully",
 				Data = reviews
 			});
 		}
@@ -338,7 +377,7 @@ namespace BookingSystem.Controllers
 		/// <summary>
 		/// Đánh dấu review là helpful
 		/// </summary>
-		[HttpPost("{id:int}/helpful")]
+		[HttpPost("{id:int}/helpful-old")]
 		[AllowAnonymous]
 		public async Task<ActionResult<ApiResponse<object>>> MarkAsHelpful(int id)
 		{

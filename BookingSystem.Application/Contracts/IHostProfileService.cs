@@ -6,11 +6,11 @@ namespace BookingSystem.Application.Contracts
 {
     public interface IHostProfileService
     {
-		Task<HostProfileDto?> GetHostProfileByIdAsync(int userId);
+		Task<HostProfileDto?> GetHostProfileByIdAsync(int userId, int currentUserId);
 		Task<PagedResult<HostProfileDto>> GetAllHostProfileAsync(HostProfileFilter hostProfileFilter);
 		Task<bool> RegisterHostAsync(CreateHostProfileDto dto);
-		Task<bool> UpdateHostProfileAsync(int id, UpdateHostProfileDto dto);
-		Task<bool> RemoveHostProfileAsync(int userId);
+		Task<bool> UpdateHostProfileAsync(int hostProfileId, int currentUserId, UpdateHostProfileDto dto);
+		Task<bool> RemoveHostProfileAsync(int hostId, int currentUserId);
 		Task<bool> ApproveHostProfileAsync(int hostProfileId, int adminId, string? note = null);
 		Task<bool> RejectHostProfileAsync(int hostProfileId, int adminId, string reason);
 		Task<bool> ReviewHostProfileAsync(int id, int adminId, string status, string? note);

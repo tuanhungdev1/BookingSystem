@@ -9,6 +9,7 @@ using BookingSystem.Domain.Repositories;
 using BookingSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using BookingSystem.Domain.Base.Filter;
+using BookingSystem.Domain.Enums;
 
 namespace BookingSystem.Infrastructure.Repositories
 {
@@ -121,6 +122,29 @@ namespace BookingSystem.Infrastructure.Repositories
 				.Take(hostProfileFilter.PageSize)
 				.ToListAsync();
 			return new PagedResult<HostProfile>(items, totalCount, hostProfileFilter.PageNumber, hostProfileFilter.PageSize);
+		}
+
+		public async Task<int> CountApprovedHostsAsync()
+		{
+			return await _dbSet
+				.CountAsync(h => h.Status == HostStatus.Approved);
+		}
+
+		public async Task<int> CountActiveHostsAsync(DateTime since)
+		{
+			return await _dbSet
+				.Include(h => h.User)
+				.CountAsync(h => h.Status == HostStatus.Approved &&
+								 h.IsActive &&
+								 h.User.LastLoginAt >= since);
+		}
+
+		public async Task<int> CountHostsByRegisteredDateAsync(DateTime startDate, DateTime endDate)
+		{
+			return await _dbSet
+				.CountAsync(h => h.Status == HostStatus.Approved &&
+								 h.RegisteredAsHostAt >= startDate &&
+								 h.RegisteredAsHostAt < endDate);
 		}
 	}
 }

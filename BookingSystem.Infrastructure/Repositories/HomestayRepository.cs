@@ -56,12 +56,10 @@ namespace BookingSystem.Infrastructure.Repositories
 				.FirstOrDefaultAsync(h => h.Id == id);
 		}
 
-		// ✅ CẬP NHẬT: Hàm lấy danh sách homestay (đã sửa lỗi SearchTerm)
 		public async Task<PagedResult<Homestay>> GetAllHomestayAsync(HomestayFilter filter)
 		{
 			var query = _dbSet.AsQueryable();
 
-			// Search term (title, description, address) - SỬA LỖI: Dùng Search thay vì SearchTerm
 			if (!string.IsNullOrEmpty(filter.Search))
 			{
 				var searchTerm = filter.Search.ToLower();
@@ -108,6 +106,45 @@ namespace BookingSystem.Infrastructure.Repositories
 					h.Longitude <= filter.Longitude.Value + (decimal)lonDelta);
 			}
 
+			if (filter.PropertyTypeId.HasValue)
+			{
+				query = query.Where(h => h.PropertyTypeId == filter.PropertyTypeId.Value);
+			}
+
+			if (!string.IsNullOrEmpty(filter.PropertyTypeIds))
+			{
+				var propertyTypeIds = filter.PropertyTypeIds
+					.Split(',', StringSplitOptions.RemoveEmptyEntries)
+					.Select(id => int.TryParse(id.Trim(), out var parsed) ? parsed : 0)
+					.Where(id => id > 0)
+					.ToList();
+
+				if (propertyTypeIds.Any())
+				{
+					query = query.Where(h => propertyTypeIds.Contains(h.PropertyTypeId));
+				}
+			}
+
+			if (filter.Adults.HasValue)
+			{
+				query = query.Where(h => h.MaximumGuests >= filter.Adults.Value);
+			}
+
+			if (filter.Children.HasValue)
+			{
+				query = query.Where(h => h.MaximumChildren >= filter.Children.Value);
+			}
+
+			if (filter.Rooms.HasValue)
+			{
+				query = query.Where(h => h.NumberOfRooms >= filter.Rooms.Value);
+			}
+
+			if (filter.Pets.HasValue && filter.Pets.Value)
+			{
+				query = query.Where(h => h.IsPetFriendly);
+			}
+
 			// Property type filter
 			//if (!string.IsNullOrEmpty(filter.Type))
 			//{
@@ -146,6 +183,11 @@ namespace BookingSystem.Infrastructure.Repositories
 				query = query.Where(h => h.OwnerId == filter.OwnerId.Value);
 			}
 
+			if (filter.MinRating.HasValue)
+			{
+				query = query.Where(h => h.RatingAverage >= filter.MinRating.Value);
+			}
+
 			// Price range
 			if (filter.MinPrice.HasValue)
 			{
@@ -157,7 +199,6 @@ namespace BookingSystem.Infrastructure.Repositories
 				query = query.Where(h => h.BaseNightlyPrice <= filter.MaxPrice.Value);
 			}
 
-			// ✅ THÊM MỚI: Price options filters
 			if (filter.HasWeekendPrice.HasValue)
 			{
 				query = filter.HasWeekendPrice.Value

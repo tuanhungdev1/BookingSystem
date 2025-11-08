@@ -57,6 +57,40 @@ namespace BookingSystem.Application.Services
 			return ipAddress ?? "127.0.0.1";
 		}
 
+		public async Task<PagedResult<PaymentDto>> GetPaymentsByHostIdAsync(int hostId, PaymentFilter filter)
+		{
+			_logger.LogInformation("Fetching payments for homestays owned by host {HostId}.", hostId);
+
+			// Kiểm tra user tồn tại
+			var host = await _userManager.FindByIdAsync(hostId.ToString());
+			if (host == null)
+			{
+				throw new NotFoundException($"Host with ID {hostId} not found.");
+			}
+
+			// Kiểm tra quyền: phải là Host hoặc Admin
+			var roles = await _userManager.GetRolesAsync(host);
+			if (!roles.Contains("Host") && !roles.Contains("Admin"))
+			{
+				throw new BadRequestException("User does not have Host or Admin role.");
+			}
+
+			// Lấy danh sách payment theo host
+			var pagedPayments = await _paymentRepository.GetPaymentsByHostIdAsync(hostId, filter);
+			var paymentDtos = _mapper.Map<List<PaymentDto>>(pagedPayments.Items);
+
+			_logger.LogInformation("Retrieved {Count} payments for host {HostId}.", paymentDtos.Count, hostId);
+
+			return new PagedResult<PaymentDto>
+			{
+				Items = paymentDtos,
+				TotalCount = pagedPayments.TotalCount,
+				PageNumber = pagedPayments.PageNumber,
+				PageSize = pagedPayments.PageSize,
+				TotalPages = (int)Math.Ceiling((double)pagedPayments.TotalCount / pagedPayments.PageSize)
+			};
+		}
+
 		public async Task<PagedResult<PaymentDto>> GetAllPaymentAsync(PaymentFilter paymentFilter, int? userId = null)
 		{
 			var payments = await _paymentRepository.GetAllPaymentAsync(paymentFilter, userId);

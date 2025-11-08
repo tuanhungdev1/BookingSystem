@@ -48,6 +48,7 @@ namespace BookingSystem.Domain.Entities
 		public virtual ICollection<WishlistItem> WishlistItems { get; set; } = new List<WishlistItem>();
 		public virtual ICollection<UserPreference> UserPreferences { get; set; } = new List<UserPreference>();
 		public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+		public ICollection<ReviewHelpful> ReviewHelpfuls { get; set; } = new List<ReviewHelpful>();
 		public string FullName => $"{FirstName} {LastName}";
 
 		public void VerifyEmail()

@@ -3,6 +3,7 @@ using BookingSystem.Application.DTOs.AccommodationDTO;
 using BookingSystem.Application.DTOs.AmenityDTO;
 using BookingSystem.Application.DTOs.AvailabilityCalendarDTO;
 using BookingSystem.Application.DTOs.BookingDTO;
+using BookingSystem.Application.DTOs.CouponDTO;
 using BookingSystem.Application.DTOs.HomestayDTO;
 using BookingSystem.Application.DTOs.HomestayImageDTO;
 using BookingSystem.Application.DTOs.HostProfileDTO;
@@ -37,6 +38,65 @@ namespace BookingSystem.Application.Mappings
 			ConfigureWishlistItemMappings();
 			ConfigureBookingMappings();
 			ConfigurePaymentMappings();
+			ConfigureCouponMappings();
+		}
+
+		private void ConfigureCouponMappings()
+		{
+			CreateMap<Coupon, CouponDto>()
+			   .ForMember(dest => dest.CouponTypeDisplay,
+				   opt => opt.MapFrom(src => src.CouponType.ToString()))
+			   .ForMember(dest => dest.ScopeDisplay,
+				   opt => opt.MapFrom(src => src.Scope.ToString()))
+			   .ForMember(dest => dest.SpecificHomestayName,
+				   opt => opt.MapFrom(src => src.SpecificHomestay != null ? src.SpecificHomestay.HomestayTitle : null))
+			   .ForMember(dest => dest.ApplicableHomestayIds,
+				   opt => opt.MapFrom(src => src.CouponHomestays.Select(ch => ch.HomestayId).ToList()))
+			   .ForMember(dest => dest.CreatedByUserName,
+				   opt => opt.MapFrom(src => src.CreatedBy != null ? src.CreatedBy.UserName : null))
+			   .ForMember(dest => dest.IsExpired,
+				   opt => opt.MapFrom(src => src.EndDate < DateTime.UtcNow))
+			   .ForMember(dest => dest.IsAvailable,
+				   opt => opt.MapFrom(src =>
+					   src.IsActive &&
+					   src.StartDate <= DateTime.UtcNow &&
+					   src.EndDate >= DateTime.UtcNow &&
+					   (src.TotalUsageLimit == null || src.CurrentUsageCount < src.TotalUsageLimit)))
+			   .ReverseMap()
+			   .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
+			   .ForMember(dest => dest.SpecificHomestay, opt => opt.Ignore())
+			   .ForMember(dest => dest.CouponUsages, opt => opt.Ignore())
+			   .ForMember(dest => dest.CouponHomestays, opt => opt.Ignore())
+			   .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+			   .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
+
+			CreateMap<CreateCouponDto, Coupon>()
+				.ForMember(dest => dest.Id, opt => opt.Ignore())
+				.ForMember(dest => dest.CreatedByUserId, opt => opt.Ignore())
+				.ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
+				.ForMember(dest => dest.SpecificHomestay, opt => opt.Ignore())
+				.ForMember(dest => dest.CouponUsages, opt => opt.Ignore())
+				.ForMember(dest => dest.CouponHomestays, opt => opt.Ignore())
+				.ForMember(dest => dest.CurrentUsageCount, opt => opt.MapFrom(src => 0))
+				.ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
+				.ForMember(dest => dest.CouponCode, opt => opt.MapFrom(src => src.CouponCode.Trim().ToUpper()))
+				.AfterMap((src, dest) =>
+				{
+					if (src.Scope != Domain.Enums.CouponScope.AllHomestays && src.ApplicableHomestayIds != null)
+					{
+						dest.CouponHomestays = src.ApplicableHomestayIds
+							.Distinct()
+							.Select(id => new CouponHomestay
+							{
+								HomestayId = id,
+								Coupon = dest
+							})
+							.ToList();
+					}
+				});
+
+			CreateMap<UpdateCouponDto, Coupon>()
+			   .ForMember(dest => dest.Id, opt => opt.Ignore());
 		}
 
 		private void ConfigurePaymentMappings()
@@ -144,7 +204,10 @@ namespace BookingSystem.Application.Mappings
 					src.Owner.Email))
 				.ForMember(dest => dest.OwnerAvatar, opt => opt.MapFrom(src =>
 					src.Owner.Avatar))
-
+				.ForMember(dest => dest.RatingAverage, opt => opt.MapFrom(src =>
+					src.RatingAverage))
+				.ForMember(dest => dest.TotalReviews, opt => opt.MapFrom(src =>
+					src.TotalReviews))
 				// Property Type Info
 				.ForMember(dest => dest.PropertyTypeName, opt => opt.MapFrom(src =>
 					src.PropertyType.TypeName))
@@ -189,13 +252,13 @@ namespace BookingSystem.Application.Mappings
 
 				// Availability Calendars
 				.ForMember(dest => dest.AvailabilityCalendars, opt => opt.MapFrom(src =>
-					src.AvailabilityCalendars.Where(ac => !ac.IsDeleted)))
+					src.AvailabilityCalendars.Where(ac => !ac.IsDeleted)));
 
 				// Statistics
-				.ForMember(dest => dest.RatingAverage, opt => opt.MapFrom(src =>
-					src.Reviews.Any() ? src.Reviews.Average(r => r.OverallRating) : 0))
-				.ForMember(dest => dest.TotalReviews, opt => opt.MapFrom(src =>
-					src.Reviews.Count));
+				//.ForMember(dest => dest.RatingAverage, opt => opt.MapFrom(src =>
+				//	src.Reviews.Any() ? src.Reviews.Average(r => r.OverallRating) : 0))
+				//.ForMember(dest => dest.TotalReviews, opt => opt.MapFrom(src =>
+				//	src.Reviews.Count));
 		
 
 			// Mapping cho AvailabilityCalendar

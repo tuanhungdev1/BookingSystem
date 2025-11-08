@@ -129,5 +129,17 @@ namespace BookingSystem.Infrastructure.Repositories
 				TotalPages = (int)Math.Ceiling(totalCount / (double)filter.PageSize)
 			};
 		}
+
+		public async Task<int> CountActiveUsersAsync(DateTime since)
+		{
+			return await _dbSet
+				.CountAsync(u => !u.IsDeleted && u.LastLoginAt >= since);
+		}
+
+		public async Task<int> CountUsersByCreatedDateAsync(DateTime startDate, DateTime endDate)
+		{
+			return await _dbSet
+				.CountAsync(u => !u.IsDeleted && u.CreatedAt >= startDate && u.CreatedAt < endDate);
+		}
 	}
 }

@@ -262,7 +262,7 @@ namespace BookingSystem.Application.Services
 
 				await _bookingRepository.AddAsync(booking);
 				await _bookingRepository.SaveChangesAsync();
-
+				await BlockDatesForBookingAsync(booking, "Pending Booking");
 				await _unitOfWork.CommitTransactionAsync();
 				_logger.LogInformation("Booking {BookingCode} created successfully.", booking.BookingCode);
 
@@ -568,7 +568,7 @@ namespace BookingSystem.Application.Services
 				await _bookingRepository.SaveChangesAsync();
 
 				// TODO: Send confirmation email/notification to guest
-
+				await BlockDatesForBookingAsync(booking, "Confirmed Booking");
 				await _unitOfWork.CommitTransactionAsync();
 				_logger.LogInformation("Booking {BookingId} confirmed successfully by {Role} {UserId}.",
 					bookingId, isAdmin ? "Admin" : "Host", hostId);
@@ -630,7 +630,7 @@ namespace BookingSystem.Application.Services
 
 				// TODO: Send rejection email/notification to guest
 				// TODO: Process refund if payment was made
-
+				await UnblockDatesForBookingAsync(booking);
 				await _unitOfWork.CommitTransactionAsync();
 				_logger.LogInformation("Booking {BookingId} rejected successfully by {Role} {UserId}.",
 					bookingId, isAdmin ? "Admin" : "Host", hostId);
@@ -700,7 +700,7 @@ namespace BookingSystem.Application.Services
 
 				// TODO: Calculate cancellation fee based on cancellation policy
 				// TODO: Process refund
-
+				await UnblockDatesForBookingAsync(booking);
 				await _unitOfWork.CommitTransactionAsync();
 				_logger.LogInformation("Booking {BookingId} cancelled successfully by {Role} {UserId}.",
 					bookingId, isAdmin ? "Admin" : "Guest", userId);
@@ -1087,6 +1087,136 @@ namespace BookingSystem.Application.Services
 				await _unitOfWork.RollbackTransactionAsync();
 				throw;
 			}
+		}
+
+		private async Task UnblockDatesForBookingAsync(Booking booking)
+		{
+			_logger.LogInformation(
+				"Unblocking dates for cancelled Booking {BookingCode}.",
+				booking.BookingCode
+			);
+
+			var startDate = DateOnly.FromDateTime(booking.CheckInDate);
+			var endDate = DateOnly.FromDateTime(booking.CheckOutDate).AddDays(-1);
+
+			var calendars = await _availabilityCalendarRepository
+				.GetByDateRangeAsync(booking.HomestayId, startDate, endDate);
+
+			foreach (var calendar in calendars)
+			{
+				// Chỉ unblock nếu BlockReason chứa BookingCode này
+				if (calendar.BlockReason != null &&
+					calendar.BlockReason.Contains(booking.BookingCode))
+				{
+					calendar.IsBlocked = false;
+					calendar.IsAvailable = true;
+					calendar.BlockReason = null;
+					calendar.UpdatedAt = DateTime.UtcNow;
+					calendar.UpdatedBy = "System";
+
+					_availabilityCalendarRepository.Update(calendar);
+				}
+			}
+
+			await _availabilityCalendarRepository.SaveChangesAsync();
+
+			_logger.LogInformation(
+				"Unblocked dates for cancelled Booking {BookingCode}.",
+				booking.BookingCode
+			);
+		}
+
+		private async Task BlockDatesForBookingAsync(Booking booking, string reason = "Booked")
+		{
+			_logger.LogInformation(
+				"Blocking dates for Booking {BookingCode} from {CheckIn} to {CheckOut}.",
+				booking.BookingCode, booking.CheckInDate, booking.CheckOutDate
+			);
+
+			var startDate = DateOnly.FromDateTime(booking.CheckInDate);
+			var endDate = DateOnly.FromDateTime(booking.CheckOutDate).AddDays(-1); // Không bao gồm ngày checkout
+
+			var datesToBlock = new List<DateOnly>();
+			var currentDate = startDate;
+
+			// Tạo danh sách các ngày cần block
+			while (currentDate <= endDate)
+			{
+				datesToBlock.Add(currentDate);
+				currentDate = currentDate.AddDays(1);
+			}
+
+			// Lấy các calendar entries đã tồn tại
+			var existingCalendars = await _availabilityCalendarRepository
+				.GetByDateRangeAsync(booking.HomestayId, startDate, endDate);
+
+			var existingDates = existingCalendars
+				.ToDictionary(c => c.AvailableDate, c => c);
+
+			foreach (var date in datesToBlock)
+			{
+				if (existingDates.ContainsKey(date))
+				{
+					// Update existing calendar entry
+					var calendar = existingDates[date];
+					calendar.IsBlocked = true;
+					calendar.IsAvailable = false;
+					calendar.BlockReason = $"{reason} - {booking.BookingCode}";
+					calendar.UpdatedAt = DateTime.UtcNow;
+					calendar.UpdatedBy = "System";
+
+					_availabilityCalendarRepository.Update(calendar);
+				}
+				else
+				{
+					// Create new calendar entry
+					var newCalendar = new AvailabilityCalendar
+					{
+						HomestayId = booking.HomestayId,
+						AvailableDate = date,
+						IsBlocked = true,
+						IsAvailable = false,
+						BlockReason = $"{reason} - {booking.BookingCode}",
+						CreatedAt = DateTime.UtcNow,
+						UpdatedAt = DateTime.UtcNow,
+						CreatedBy = "System",
+						UpdatedBy = "System"
+					};
+
+					await _availabilityCalendarRepository.AddAsync(newCalendar);
+				}
+			}
+
+			await _availabilityCalendarRepository.SaveChangesAsync();
+
+			_logger.LogInformation(
+				"Blocked {Count} dates for Booking {BookingCode}.",
+				datesToBlock.Count, booking.BookingCode
+			);
+		}
+
+		public async Task<PagedResult<BookingDto>> GetHostManagedBookingsPagedAsync(int hostId, BookingFilter filter)
+		{
+			_logger.LogInformation("Fetching paged bookings for host {HostId}.", hostId);
+
+			var host = await _userManager.FindByIdAsync(hostId.ToString());
+			if (host == null)
+				throw new NotFoundException($"Host with ID {hostId} not found.");
+
+			var roles = await _userManager.GetRolesAsync(host);
+			if (!roles.Contains("Host") && !roles.Contains("Admin"))
+				throw new BadRequestException("User does not have Host or Admin role.");
+
+			var pagedBookings = await _bookingRepository.GetHostBookingsAsync(hostId, filter);
+			var dtos = _mapper.Map<List<BookingDto>>(pagedBookings.Items);
+
+			return new PagedResult<BookingDto>
+			{
+				Items = dtos,
+				TotalCount = pagedBookings.TotalCount,
+				PageNumber = pagedBookings.PageNumber,
+				PageSize = pagedBookings.PageSize
+			};
 		}
 	}
 }

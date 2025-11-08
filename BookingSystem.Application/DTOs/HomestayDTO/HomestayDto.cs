@@ -67,8 +67,8 @@ namespace BookingSystem.Application.DTOs.AccommodationDTO
 
 		public string? SearchKeywords { get; set; }
 		public int ViewCount { get; set; }
-		public double RatingAverage { get; set; }
-		public int TotalReviews { get; set; }
+		public double RatingAverage { get; set; } = 0.0;
+		public int TotalReviews { get; set; } = 0;
 		public int BookingCount { get; set; }
 
 

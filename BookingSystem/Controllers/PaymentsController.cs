@@ -36,6 +36,22 @@ namespace BookingSystem.Controllers
 			return int.Parse(userIdClaim);
 		}
 
+		[HttpGet("host")]
+		[Authorize(Roles = "Host,Admin")]
+		public async Task<ActionResult<ApiResponse<PagedResult<PaymentDto>>>> GetPaymentsByHost(
+		[FromQuery] PaymentFilter paymentFilter)
+		{
+			var hostId = GetCurrentUserId();
+			var payments = await _paymentService.GetPaymentsByHostIdAsync(hostId, paymentFilter);
+
+			return Ok(new ApiResponse<PagedResult<PaymentDto>>
+			{
+				Success = true,
+				Message = "Host payments retrieved successfully",
+				Data = payments
+			});
+		}
+
 		[HttpGet("my-payments")]
 		public async Task<ActionResult<ApiResponse<PagedResult<PaymentDto>>>> GetMyPayments([FromQuery] PaymentFilter paymentFilter)
 		{

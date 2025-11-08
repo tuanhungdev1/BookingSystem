@@ -14,6 +14,7 @@ namespace BookingSystem.Application.Contracts
 		Task<PagedResult<ReviewDto>> GetAllReviewsAsync(ReviewFilter filter);
 		Task<PagedResult<ReviewDto>> GetHomestayReviewsAsync(int homestayId, ReviewFilter filter);
 		Task<PagedResult<ReviewDto>> GetUserReviewsAsync(int userId, ReviewFilter filter);
+		Task<PagedResult<ReviewDto>> GetReviewsByHostIdAsync(int hostId, ReviewFilter filter);
 		Task<bool> AddHostResponseAsync(int reviewId, int hostId, HostResponseDto request);
 		Task<bool> UpdateHostResponseAsync(int reviewId, int hostId, HostResponseDto request);
 		Task<bool> DeleteHostResponseAsync(int reviewId, int hostId);
@@ -22,5 +23,6 @@ namespace BookingSystem.Application.Contracts
 		Task<HomestayReviewStatistics> GetHomestayStatisticsAsync(int homestayId);
 		Task<UserReviewStatistics> GetUserStatisticsAsync(int userId);
 		Task<IEnumerable<ReviewDto>> GetPendingHostResponsesAsync(int hostId);
+		Task<HelpfulToggleResult> ToggleHelpfulCountAsync(int userId, int reviewId);
 	}
 }

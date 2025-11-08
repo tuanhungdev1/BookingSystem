@@ -14,6 +14,75 @@ namespace BookingSystem.Infrastructure.Repositories
 		{
 		}
 
+		public async Task<PagedResult<Payment>> GetPaymentsByHostIdAsync(int hostId, PaymentFilter filter)
+		{
+			var query = _dbSet
+				.Include(p => p.Booking)
+					.ThenInclude(b => b.Guest)
+				.Include(p => p.Booking.Homestay)
+				.Where(p => p.Booking.Homestay.OwnerId == hostId) // Lọc theo chủ homestay
+				.AsQueryable();
+
+			// Áp dụng các filter giống như GetAllPaymentAsync
+			if (!string.IsNullOrWhiteSpace(filter.Search))
+			{
+				var search = filter.Search.Trim().ToLower();
+				query = query.Where(p =>
+					p.Booking.BookingCode.ToLower().Contains(search) ||
+					(p.TransactionId != null && p.TransactionId.ToLower().Contains(search)) ||
+					p.Booking.Guest.FullName.ToLower().Contains(search)
+				);
+			}
+
+			if (!string.IsNullOrWhiteSpace(filter.BookingCode))
+			{
+				query = query.Where(p => p.Booking.BookingCode.Contains(filter.BookingCode));
+			}
+
+			if (filter.PaymentMethod.HasValue)
+			{
+				query = query.Where(p => p.PaymentMethod == filter.PaymentMethod.Value);
+			}
+
+			if (filter.PaymentStatus.HasValue)
+			{
+				query = query.Where(p => p.PaymentStatus == filter.PaymentStatus.Value);
+			}
+
+			if (filter.MinAmount.HasValue)
+			{
+				query = query.Where(p => p.PaymentAmount >= filter.MinAmount.Value);
+			}
+
+			if (filter.MaxAmount.HasValue)
+			{
+				query = query.Where(p => p.PaymentAmount <= filter.MaxAmount.Value);
+			}
+
+			if (filter.DateFrom.HasValue)
+			{
+				query = query.Where(p => p.CreatedAt >= filter.DateFrom.Value);
+			}
+
+			if (filter.DateTo.HasValue)
+			{
+				query = query.Where(p => p.CreatedAt <= filter.DateTo.Value);
+			}
+
+			var totalCount = await query.CountAsync();
+
+			// Sắp xếp
+			query = ApplySorting(query, filter);
+
+			// Phân trang
+			var items = await query
+				.Skip((filter.PageNumber - 1) * filter.PageSize)
+				.Take(filter.PageSize)
+				.ToListAsync();
+
+			return new PagedResult<Payment>(items, totalCount, filter.PageNumber, filter.PageSize);
+		}
+
 		public async Task<PagedResult<Payment>> GetAllPaymentAsync(PaymentFilter paymentFilter, int? userId = null)
 		{
 			var query = _dbSet

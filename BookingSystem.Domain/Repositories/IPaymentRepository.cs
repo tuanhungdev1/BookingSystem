@@ -15,5 +15,6 @@ namespace BookingSystem.Domain.Repositories
 		Task<Payment?> GetByIdWithDetailsAsync(int id);
 		Task<IEnumerable<Payment>> GetByBookingIdAsync(int bookingId);
 		Task<Payment?> GetByTransactionIdAsync(string transactionId);
+		Task<PagedResult<Payment>> GetPaymentsByHostIdAsync(int hostId, PaymentFilter filter);
 	}
 }
