@@ -1,8 +1,12 @@
 ﻿using BookingSystem.Application.Contracts;
+using BookingSystem.Application.DTOs.UserDTO;
 using BookingSystem.Application.Models.Common;
 using BookingSystem.Application.Models.Requests.Auth;
 using BookingSystem.Application.Models.Responses;
 using BookingSystem.Domain.Entities;
+using BookingSystem.Domain.Enums;
+using BookingSystem.Domain.Exceptions;
+using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -21,12 +25,15 @@ namespace BookingSystem.Controllers
 		private readonly UserManager<User> _userManager;
 		private readonly JwtSettings _jwtSettings;
 		private readonly IWebHostEnvironment _environment;
-
+		private readonly FacebookAuthSettings _facebookSettings;
+		private readonly GoogleAuthSettings _googleSettings;
 		public AuthController(
 			IAuthService authService,
 			IOptions<JwtSettings> jwtSettings,
 			IJwtService jwtService,
 			IWebHostEnvironment environment,
+			IOptions<FacebookAuthSettings> facebookSettings,
+			IOptions<GoogleAuthSettings> googleSettings,
 			UserManager<User> userManager)
 		{
 			_authService = authService;
@@ -34,6 +41,8 @@ namespace BookingSystem.Controllers
 			_userManager = userManager;
 			_jwtSettings = jwtSettings.Value;
 			_environment = environment;
+			_googleSettings = googleSettings.Value;
+			_facebookSettings = facebookSettings.Value;
 		}
 
 		[HttpPost("login/admin")]
@@ -44,8 +53,12 @@ namespace BookingSystem.Controllers
 			var roles = await _userManager.GetRolesAsync(user);
 			var accessToken = _jwtService.GenerateAccessToken(user, roles);
 
-			SetTokenCookie("accessToken", accessToken, int.Parse(_jwtSettings.AccessTokenExpirationMinutes.ToString()));
-			SetTokenCookie("refreshToken", user.RefreshToken, int.Parse(_jwtSettings.RefreshTokenExpiryDays.ToString()) * 24 * 60);
+			SetTokenCookie("accessToken", accessToken,
+				int.Parse(_jwtSettings.AccessTokenExpirationMinutes.ToString()),
+				request.RememberMe);
+			SetTokenCookie("refreshToken", user.RefreshToken,
+				int.Parse(_jwtSettings.RefreshTokenExpiryDays.ToString()) * 24 * 60,
+				request.RememberMe);
 
 			return Ok(new ApiResponse<UserProfileDto>
 			{
@@ -85,8 +98,12 @@ namespace BookingSystem.Controllers
 			var roles = await _userManager.GetRolesAsync(user);
 			var accessToken = _jwtService.GenerateAccessToken(user, roles);
 
-			SetTokenCookie("accessToken", accessToken, int.Parse(_jwtSettings.AccessTokenExpirationMinutes.ToString()));
-			SetTokenCookie("refreshToken", user.RefreshToken, int.Parse(_jwtSettings.RefreshTokenExpiryDays.ToString()) * 24 * 60);
+			SetTokenCookie("accessToken", accessToken,
+				int.Parse(_jwtSettings.AccessTokenExpirationMinutes.ToString()),
+				request.RememberMe);
+			SetTokenCookie("refreshToken", user.RefreshToken,
+				int.Parse(_jwtSettings.RefreshTokenExpiryDays.ToString()) * 24 * 60,
+				request.RememberMe);
 
 			return Ok(new ApiResponse<UserProfileDto>
 			{
@@ -115,9 +132,10 @@ namespace BookingSystem.Controllers
 				var accessToken = _jwtService.GenerateAccessToken(user, roles);
 
 
-				SetTokenCookie("accessToken", accessToken, int.Parse(_jwtSettings.AccessTokenExpirationMinutes.ToString()));
-				SetTokenCookie("refreshToken", user.RefreshToken, int.Parse(_jwtSettings.RefreshTokenExpiryDays.ToString()) * 24 * 60);
-
+				SetTokenCookie("accessToken", accessToken,
+					int.Parse(_jwtSettings.AccessTokenExpirationMinutes.ToString()));
+				SetTokenCookie("refreshToken", user.RefreshToken,
+					int.Parse(_jwtSettings.RefreshTokenExpiryDays.ToString()) * 24 * 60);
 
 				return Ok(new ApiResponse<UserProfileDto>
 				{
@@ -335,15 +353,208 @@ namespace BookingSystem.Controllers
 			});
 		}
 
-		private void SetTokenCookie(string name, string value, int expirationMinutes)
+		[HttpPost("external-login/google")]
+		public async Task<ActionResult<ApiResponse<UserProfileDto>>> GoogleLogin(
+		[FromBody] ExternalLoginRequest request)
+		{
+			try
+			{
+				// TODO: Implement Google token verification
+				// For production, verify the IdToken with Google API
+				// Example:
+				var payload = await VerifyGoogleTokenAsync(request.IdToken);
+				if (payload == null || payload.Email != request.Email)
+				{
+					return BadRequest(new ApiResponse<UserProfileDto>
+					{
+						Success = false,
+						Message = "Invalid Google token"
+					});
+				}
+
+				var (user, isNewUser) = await _authService.ExternalLoginAsync(
+					request.Email,
+					request.ExternalId,
+					AuthProvider.Google,
+					request.FirstName,
+					request.LastName,
+					request.Avatar);
+
+				var roles = await _userManager.GetRolesAsync(user);
+				var accessToken = _jwtService.GenerateAccessToken(user, roles);
+
+				// Set cookies với expire dài hạn cho external login
+				SetTokenCookie("accessToken", accessToken,
+					int.Parse(_jwtSettings.AccessTokenExpirationMinutes.ToString()),
+					rememberMe: true);
+				SetTokenCookie("refreshToken", user.RefreshToken!,
+					int.Parse(_jwtSettings.RefreshTokenExpiryDays.ToString()) * 24 * 60,
+					rememberMe: true);
+
+				var userInfo = await _authService.GetUserInfoAsync(user);
+
+				return Ok(new ApiResponse<UserProfileDto>
+				{
+					Success = true,
+					Message = isNewUser
+						? "Account created successfully. Welcome!"
+						: "Login successful",
+					Data = userInfo
+				});
+			}
+			catch (BadRequestException ex)
+			{
+				return BadRequest(new ApiResponse<UserProfileDto>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new ApiResponse<UserProfileDto>
+				{
+					Success = false,
+					Message = "An error occurred during Google login"
+				});
+			}
+		}
+
+		[HttpPost("external-login/facebook")]
+		public async Task<ActionResult<ApiResponse<UserProfileDto>>> FacebookLogin(
+			[FromBody] ExternalLoginRequest request)
+		{
+			try
+			{
+				// TODO: Implement Facebook token verification
+				// For production, verify the IdToken with Facebook Graph API
+				// Example:
+				var isValid = await VerifyFacebookTokenAsync(request.IdToken, request.ExternalId);
+				if (!isValid)
+				{
+					return BadRequest(new ApiResponse<UserProfileDto>
+					{
+						Success = false,
+						Message = "Invalid Facebook token"
+					});
+				}
+
+				var (user, isNewUser) = await _authService.ExternalLoginAsync(
+					request.Email,
+					request.ExternalId,
+					AuthProvider.Facebook,
+					request.FirstName,
+					request.LastName,
+					request.Avatar);
+
+				var roles = await _userManager.GetRolesAsync(user);
+				var accessToken = _jwtService.GenerateAccessToken(user, roles);
+
+				// Set cookies với expire dài hạn cho external login
+				SetTokenCookie("accessToken", accessToken,
+					int.Parse(_jwtSettings.AccessTokenExpirationMinutes.ToString()),
+					rememberMe: true);
+				SetTokenCookie("refreshToken", user.RefreshToken!,
+					int.Parse(_jwtSettings.RefreshTokenExpiryDays.ToString()) * 24 * 60,
+					rememberMe: true);
+
+				var userInfo = await _authService.GetUserInfoAsync(user);
+
+				return Ok(new ApiResponse<UserProfileDto>
+				{
+					Success = true,
+					Message = isNewUser
+						? "Account created successfully. Welcome!"
+						: "Login successful",
+					Data = userInfo
+				});
+			}
+			catch (BadRequestException ex)
+			{
+				return BadRequest(new ApiResponse<UserProfileDto>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new ApiResponse<UserProfileDto>
+				{
+					Success = false,
+					Message = "An error occurred during Facebook login"
+				});
+			}
+		}
+
+		// Helper method để verify Google token (Optional - for production)
+		private async Task<GoogleJsonWebSignature.Payload?> VerifyGoogleTokenAsync(string idToken)
+		{
+			try
+			{
+				// Cần cài package: Google.Apis.Auth
+				var settings = new GoogleJsonWebSignature.ValidationSettings
+				{
+					Audience = new[] { _googleSettings.ClientId } // Your Google Client ID
+				};
+
+				var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
+				return payload;
+			}
+			catch
+			{
+				return null;
+			}
+		}
+
+		// Helper method để verify Facebook token (Optional - for production)
+		private async Task<bool> VerifyFacebookTokenAsync(string accessToken, string userId)
+		{
+			try
+			{
+				using var httpClient = new HttpClient();
+
+				// Facebook App Token = APP_ID|APP_SECRET
+				var appToken = $"{_facebookSettings.AppId}|{_facebookSettings.AppSecret}";
+
+				var url =
+					$"https://graph.facebook.com/debug_token?input_token={accessToken}&access_token={appToken}";
+
+				var response = await httpClient.GetAsync(url);
+
+				if (response.IsSuccessStatusCode)
+				{
+					var content = await response.Content.ReadAsStringAsync();
+					// Parse JSON nếu cần kiểm tra userId
+					return true;
+				}
+
+				return false;
+			}
+			catch
+			{
+				return false;
+			}
+		}
+
+		private void SetTokenCookie(string name, string value, int expirationMinutes, bool rememberMe = false)
 		{
 			var cookieOptions = new CookieOptions
 			{
 				HttpOnly = true,
-				Secure = true,
-				SameSite = SameSiteMode.Lax, 
-				Expires = DateTimeOffset.UtcNow.AddMinutes(expirationMinutes)
+				Secure = true, // Chỉ gửi qua HTTPS
+				SameSite = SameSiteMode.Lax, // Bảo vệ CSRF
+				Expires = rememberMe
+					? DateTimeOffset.UtcNow.AddDays(7) // 7 ngày nếu remember me
+					: (DateTimeOffset?)null // Session cookie nếu không remember
 			};
+
+			// Nếu không remember me nhưng vẫn muốn set expire time
+			if (!rememberMe && expirationMinutes > 0)
+			{
+				cookieOptions.Expires = DateTimeOffset.UtcNow.AddMinutes(expirationMinutes);
+			}
+
 			Response.Cookies.Append(name, value, cookieOptions);
 		}
 	}

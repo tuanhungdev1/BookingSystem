@@ -318,6 +318,122 @@ namespace BookingSystem.Application.Services
 			return result.Succeeded;
 		}
 
+		public async Task<(User user, bool isNewUser)> ExternalLoginAsync(
+	string email,
+	string externalId,
+	AuthProvider provider,
+	string firstName,
+	string lastName,
+	string? avatar = null)
+		{
+			// 1. Kiểm tra email đã tồn tại
+			var existingUser = await _userManager.FindByEmailAsync(email);
+
+			if (existingUser != null)
+			{
+				// Kiểm tra nếu email được đăng ký với provider khác
+				if (existingUser.AuthProvider.HasValue &&
+					existingUser.AuthProvider != provider)
+				{
+					_logger.LogWarning(
+						"External login failed: Email {Email} already registered with {Provider}",
+						email, existingUser.AuthProvider);
+
+					throw new BadRequestException(
+						$"This email is already registered with {existingUser.AuthProvider}. " +
+						$"Please login using {existingUser.AuthProvider}.");
+				}
+
+				// Kiểm tra nếu email được đăng ký bằng password (Local)
+				if (!existingUser.AuthProvider.HasValue ||
+					existingUser.AuthProvider == AuthProvider.Local)
+				{
+					_logger.LogWarning(
+						"External login failed: Email {Email} already registered with password",
+						email);
+
+					throw new BadRequestException(
+						"This email is already registered with a password. " +
+						"Please login using your email and password, or use the 'Forgot Password' option.");
+				}
+
+				// Cùng provider -> cập nhật thông tin và login
+				existingUser.ExternalId = externalId;
+				existingUser.LastLoginAt = DateTime.UtcNow;
+				existingUser.RefreshToken = GenerateSecureToken();
+				existingUser.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+
+				// Cập nhật avatar nếu có
+				if (!string.IsNullOrEmpty(avatar) && string.IsNullOrEmpty(existingUser.Avatar))
+				{
+					existingUser.Avatar = avatar;
+				}
+
+				// Cập nhật tên nếu chưa có
+				if (string.IsNullOrEmpty(existingUser.FirstName))
+				{
+					existingUser.FirstName = firstName;
+				}
+				if (string.IsNullOrEmpty(existingUser.LastName))
+				{
+					existingUser.LastName = lastName;
+				}
+
+				existingUser.UpdatedAt = DateTime.UtcNow;
+				await _userManager.UpdateAsync(existingUser);
+
+				_logger.LogInformation(
+					"User logged in successfully via {Provider}: {Email}",
+					provider, email);
+
+				return (existingUser, false);
+			}
+
+			// 2. Tạo user mới
+			var newUser = new User
+			{
+				UserName = email,
+				Email = email,
+				FirstName = firstName,
+				LastName = lastName,
+				AuthProvider = provider,
+				ExternalId = externalId,
+				ExternalEmail = email,
+				Avatar = avatar,
+				IsEmailConfirmed = true, // OAuth emails are pre-verified
+				EmailConfirmed = true,
+				IsActive = true,
+				CreatedAt = DateTime.UtcNow,
+				RefreshToken = GenerateSecureToken(),
+				RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7)
+			};
+
+			// Tạo user không cần password
+			var result = await _userManager.CreateAsync(newUser);
+
+			if (!result.Succeeded)
+			{
+				var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+				_logger.LogError(
+					"External login failed for {Email}: {Errors}",
+					email, errors);
+
+				throw new BadRequestException($"External login failed: {errors}");
+			}
+
+			// Gán role User
+			await _userManager.AddToRoleAsync(newUser, SystemRoles.User.ToString());
+
+			// Gửi welcome email
+			await _emailService.SendWelcomeEmailAsync(newUser.Email!, newUser.FirstName);
+
+			_logger.LogInformation(
+				"New user created via {Provider}: {Email}",
+				provider, email);
+
+			return (newUser, true);
+		}
+
 		public async Task<UserProfileDto> GetUserInfoAsync(User user)
 		{
 			var roles = await _userManager.GetRolesAsync(user);

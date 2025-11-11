@@ -11,6 +11,8 @@ namespace BookingSystem.Extensions
 			services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
 			services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
 			services.Configure<PaymentGatewaySettings>(configuration.GetSection("PaymentGateway"));
+			services.Configure<GoogleAuthSettings>(configuration.GetSection("Authentication:Google"));
+			services.Configure<FacebookAuthSettings>(configuration.GetSection("Authentication:Facebook"));
 			return services;
 		}
 	}

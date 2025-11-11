@@ -39,6 +39,10 @@ namespace BookingSystem.Domain.Entities
 		public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 		public DateTime? UpdatedAt { get; set; }
 		public DateTime? LastLoginAt { get; set; }
+		// Thêm properties để phân biệt loại đăng nhập
+		public AuthProvider? AuthProvider { get; set; }  // Google, Facebook, Local
+		public string? ExternalId { get; set; }  // ID từ Google/Facebook
+		public string? ExternalEmail { get; set; }  // Email từ provider
 		// Navigation Properties
 		public HostProfile? HostProfile { get; set; }
 		public virtual ICollection<Homestay> OwnedHomestays { get; set; } = new List<Homestay>();
