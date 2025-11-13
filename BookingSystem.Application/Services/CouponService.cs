@@ -83,9 +83,78 @@ namespace BookingSystem.Application.Services
 			// Validate discount value
 			ValidateDiscountValue(request.CouponType, request.DiscountValue);
 
-			// Validate scope and homestay
-			await ValidateCouponScopeAsync(request.Scope, request.SpecificHomestayId,
-				request.ApplicableHomestayIds, userId, roles);
+			// **LOGIC SỬA: Xác định role đang sử dụng**
+			var actingAsRole = request.ActingAsRole;
+
+			// Nếu không chỉ định ActingAsRole, tự động xác định
+			if (string.IsNullOrEmpty(actingAsRole))
+			{
+				// Ưu tiên Host nếu có cả 2 role (vì thường tạo cho homestay của mình)
+				actingAsRole = roles.Contains("Host") ? "Host" : "Admin";
+			}
+
+			// Validate ActingAsRole hợp lệ
+			if (!roles.Contains(actingAsRole))
+			{
+				throw new BadRequestException($"You don't have '{actingAsRole}' role.");
+			}
+
+			var isAdmin = actingAsRole == "Admin";
+			var isHost = actingAsRole == "Host";
+
+			// **Xử lý Scope dựa trên role đang sử dụng**
+			if (isHost)
+			{
+				_logger.LogInformation("User {UserId} is creating coupon as Host role.", userId);
+
+				// Lấy tất cả Homestay của Host
+				var hostHomestays = await _homestayRepository.GetHomestaysByOwnerIdAsync(userId);
+
+				if (!hostHomestays.Any())
+				{
+					throw new BadRequestException("You don't have any homestays to apply coupon.");
+				}
+
+				// Nếu Host chọn AllHomestays hoặc không chỉ định homestays
+				if (request.Scope == CouponScope.AllHomestays ||
+					(request.ApplicableHomestayIds == null || !request.ApplicableHomestayIds.Any()))
+				{
+					// Đổi Scope thành MultipleHomestays và áp dụng cho tất cả homestays của Host
+					request.Scope = CouponScope.MultipleHomestays;
+					request.ApplicableHomestayIds = hostHomestays.Select(h => h.Id).ToList();
+					request.SpecificHomestayId = null;
+
+					_logger.LogInformation("Host {UserId} creating coupon for all their {Count} homestays.",
+						userId, request.ApplicableHomestayIds.Count);
+				}
+				else if (request.Scope == CouponScope.SpecificHomestay && request.SpecificHomestayId.HasValue)
+				{
+					// Validate homestay thuộc sở hữu của host
+					if (!hostHomestays.Any(h => h.Id == request.SpecificHomestayId.Value))
+					{
+						throw new BadRequestException($"You don't own homestay with ID {request.SpecificHomestayId.Value}.");
+					}
+				}
+				else if (request.Scope == CouponScope.MultipleHomestays && request.ApplicableHomestayIds != null)
+				{
+					// Validate tất cả homestays thuộc sở hữu của host
+					var hostHomestayIds = hostHomestays.Select(h => h.Id).ToList();
+					var invalidIds = request.ApplicableHomestayIds.Except(hostHomestayIds).ToList();
+
+					if (invalidIds.Any())
+					{
+						throw new BadRequestException($"You don't own homestays with IDs: {string.Join(", ", invalidIds)}.");
+					}
+				}
+			}
+			else if (isAdmin)
+			{
+				_logger.LogInformation("User {UserId} is creating coupon as Admin role.", userId);
+
+				// Admin validation - giữ nguyên logic cũ, cho phép AllHomestays
+				await ValidateCouponScopeAsync(request.Scope, request.SpecificHomestayId,
+					request.ApplicableHomestayIds, userId, roles);
+			}
 
 			try
 			{
@@ -130,11 +199,13 @@ namespace BookingSystem.Application.Services
 					}).ToList();
 
 					await _couponRepository.AddCouponHomestaysAsync(couponHomestays);
+					_logger.LogInformation("Added {Count} homestay relationships for coupon {CouponId}.",
+						couponHomestays.Count, coupon.Id);
 				}
 
 				await _unitOfWork.CommitTransactionAsync();
-				_logger.LogInformation("Coupon {CouponCode} created successfully with ID {CouponId}.",
-					coupon.CouponCode, coupon.Id);
+				_logger.LogInformation("Coupon {CouponCode} created successfully with ID {CouponId} by {Role}.",
+					coupon.CouponCode, coupon.Id, actingAsRole);
 
 				// Reload with details
 				var savedCoupon = await _couponRepository.GetByIdWithDetailsAsync(coupon.Id);
@@ -165,14 +236,29 @@ namespace BookingSystem.Application.Services
 			}
 
 			var roles = await _userManager.GetRolesAsync(user);
-			var isAdmin = roles.Contains("Admin");
 			var isOwner = coupon.CreatedByUserId == userId;
 
-			// Only admin or creator can update
-			if (!isAdmin && !isOwner)
+			// Only owner can update (or admin if not owner)
+			if (!isOwner && !roles.Contains("Admin"))
 			{
 				throw new BadRequestException("You do not have permission to update this coupon.");
 			}
+
+			// **Xác định role đang sử dụng**
+			var actingAsRole = request.ActingAsRole;
+
+			if (string.IsNullOrEmpty(actingAsRole))
+			{
+				actingAsRole = roles.Contains("Host") ? "Host" : "Admin";
+			}
+
+			if (!roles.Contains(actingAsRole))
+			{
+				throw new BadRequestException($"You don't have '{actingAsRole}' role.");
+			}
+
+			var isAdmin = actingAsRole == "Admin";
+			var isHost = actingAsRole == "Host";
 
 			// Validate dates if being updated
 			if (request.StartDate.HasValue && request.EndDate.HasValue)
@@ -187,6 +273,58 @@ namespace BookingSystem.Application.Services
 			if (request.DiscountValue.HasValue)
 			{
 				ValidateDiscountValue(coupon.CouponType, request.DiscountValue.Value);
+			}
+
+			// **Xử lý Scope cho Host**
+			if (isHost)
+			{
+				var hostHomestays = await _homestayRepository.GetHomestaysByOwnerIdAsync(userId);
+
+				if (!hostHomestays.Any())
+				{
+					throw new BadRequestException("You don't have any homestays.");
+				}
+
+				// Nếu đang update Scope hoặc ApplicableHomestayIds
+				if (request.Scope.HasValue || request.ApplicableHomestayIds != null)
+				{
+					var newScope = request.Scope ?? coupon.Scope;
+
+					// Nếu đổi sang AllHomestays
+					if (newScope == CouponScope.AllHomestays)
+					{
+						newScope = CouponScope.MultipleHomestays;
+						request.ApplicableHomestayIds = hostHomestays.Select(h => h.Id).ToList();
+						request.SpecificHomestayId = null;
+
+						_logger.LogInformation("Host {UserId} updating coupon {CouponId} to apply for all their homestays.",
+							userId, couponId);
+					}
+					else if (newScope == CouponScope.SpecificHomestay)
+					{
+						var homestayIdToCheck = request.SpecificHomestayId ?? coupon.SpecificHomestayId;
+						if (homestayIdToCheck.HasValue && !hostHomestays.Any(h => h.Id == homestayIdToCheck.Value))
+						{
+							throw new BadRequestException($"You don't own homestay with ID {homestayIdToCheck.Value}.");
+						}
+					}
+					else if (newScope == CouponScope.MultipleHomestays && request.ApplicableHomestayIds != null)
+					{
+						var hostHomestayIds = hostHomestays.Select(h => h.Id).ToList();
+						var invalidIds = request.ApplicableHomestayIds.Except(hostHomestayIds).ToList();
+
+						if (invalidIds.Any())
+						{
+							throw new BadRequestException($"You don't own homestays with IDs: {string.Join(", ", invalidIds)}.");
+						}
+					}
+
+					// Update scope nếu cần
+					if (request.Scope.HasValue)
+					{
+						coupon.Scope = newScope;
+					}
+				}
 			}
 
 			try
@@ -238,33 +376,22 @@ namespace BookingSystem.Application.Services
 					if (existingRelations.Any())
 					{
 						await _couponRepository.RemoveCouponHomestaysAsync(existingRelations);
+						_logger.LogInformation("Removed {Count} existing homestay relationships for coupon {CouponId}.",
+							existingRelations.Count, couponId);
 					}
 
-					// Validate and add new relationships
-					var newCouponHomestays = new List<CouponHomestay>();
-					foreach (var homestayId in request.ApplicableHomestayIds)
+					// Add new relationships
+					var newCouponHomestays = request.ApplicableHomestayIds.Select(homestayId => new CouponHomestay
 					{
-						var homestay = await _homestayRepository.GetByIdAsync(homestayId);
-						if (homestay == null)
-						{
-							throw new NotFoundException($"Homestay with ID {homestayId} not found.");
-						}
-
-						if (!isAdmin && homestay.OwnerId != userId)
-						{
-							throw new BadRequestException($"You don't own homestay with ID {homestayId}.");
-						}
-
-						newCouponHomestays.Add(new CouponHomestay
-						{
-							CouponId = couponId,
-							HomestayId = homestayId
-						});
-					}
+						CouponId = couponId,
+						HomestayId = homestayId
+					}).ToList();
 
 					if (newCouponHomestays.Any())
 					{
 						await _couponRepository.AddCouponHomestaysAsync(newCouponHomestays);
+						_logger.LogInformation("Added {Count} new homestay relationships for coupon {CouponId}.",
+							newCouponHomestays.Count, couponId);
 					}
 				}
 
@@ -273,9 +400,11 @@ namespace BookingSystem.Application.Services
 				await _couponRepository.SaveChangesAsync();
 
 				await _unitOfWork.CommitTransactionAsync();
-				_logger.LogInformation("Coupon {CouponId} updated successfully.", couponId);
+				_logger.LogInformation("Coupon {CouponId} updated successfully by {Role}.", couponId, actingAsRole);
 
-				return _mapper.Map<CouponDto>(coupon);
+				// Reload with details
+				var updatedCoupon = await _couponRepository.GetByIdWithDetailsAsync(couponId);
+				return _mapper.Map<CouponDto>(updatedCoupon);
 			}
 			catch (Exception ex)
 			{

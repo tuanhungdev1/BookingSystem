@@ -46,6 +46,20 @@ namespace BookingSystem.Domain.Entities
 
 		public int HomestayId { get; set; }
 
+		// THÊM: Thông tin người đặt phòng (snapshot tại thời điểm đặt)
+		public string GuestFullName { get; set; } = string.Empty;
+		public string GuestEmail { get; set; } = string.Empty;
+		public string GuestPhoneNumber { get; set; } = string.Empty;
+		public string? GuestAddress { get; set; }
+		public string? GuestCity { get; set; }
+		public string? GuestCountry { get; set; }
+		// THÊM: Thông tin người ở thực tế (nếu đặt cho người khác)
+		public bool IsBookingForSomeoneElse { get; set; } = false;
+		public string? ActualGuestFullName { get; set; }
+		public string? ActualGuestEmail { get; set; }
+		public string? ActualGuestPhoneNumber { get; set; }
+		public string? ActualGuestIdNumber { get; set; } // CMND/CCCD
+		public string? ActualGuestNotes { get; set; } // Ghi chú về người ở thực tế
 		// Navigation Properties
 		public virtual User Guest { get; set; } = null!;
 		public virtual Homestay Homestay { get; set; } = null!;

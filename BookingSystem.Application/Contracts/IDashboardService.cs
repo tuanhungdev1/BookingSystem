@@ -14,5 +14,11 @@ namespace BookingSystem.Application.Contracts
 		Task<DashboardBookingStatisticsDto> GetBookingStatisticsAsync(int months = 12);
 		Task<RevenueStatisticsDto> GetRevenueStatisticsAsync(int months = 12);
 		Task<ReviewStatisticsDto> GetReviewStatisticsAsync(int months = 6);
+
+		Task<HostDashboardOverviewDto> GetHostOverviewAsync(int hostId);
+		Task<HostRevenueStatisticsDto> GetHostRevenueStatisticsAsync(int hostId, int months = 12);
+		Task<HostBookingStatisticsDto> GetHostBookingStatisticsAsync(int hostId, int months = 12);
+		Task<HostReviewStatisticsDto> GetHostReviewStatisticsAsync(int hostId);
+		Task<HostPerformanceDto> GetHostPerformanceAsync(int hostId, int months = 12);
 	}
 }

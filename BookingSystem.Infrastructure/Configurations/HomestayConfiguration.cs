@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore;
 using BookingSystem.Domain.Entities;
+using System.Reflection.Emit;
 
 namespace BookingSystem.Infrastructure.Configurations
 {
@@ -75,7 +76,31 @@ namespace BookingSystem.Infrastructure.Configurations
 				.HasDefaultValue(false);
 
 			builder.Property(h => h.ApprovedBy)
-				.HasMaxLength(100);
+			.HasMaxLength(100);
+
+			builder.Property(h => h.HomestayTitleNormalized)
+		   .HasComputedColumnSql("dbo.RemoveDiacritics([HomestayTitle])", stored: true);
+
+			builder.Property(h => h.HomestayDescriptionNormalized)
+				.HasComputedColumnSql("dbo.RemoveDiacritics([HomestayDescription])", stored: true);
+
+			builder.Property(h => h.FullAddressNormalized)
+				.HasComputedColumnSql("dbo.RemoveDiacritics([FullAddress])", stored: true);
+
+			builder.Property(h => h.CountryNormalized)
+				.HasComputedColumnSql("dbo.RemoveDiacritics([Country])", stored: true);
+
+			builder.Property(h => h.CityNormalized)
+				.HasComputedColumnSql("dbo.RemoveDiacritics([City])", stored: true);
+
+			builder.Property(h => h.ProvinceNormalized)
+				.HasComputedColumnSql("dbo.RemoveDiacritics([Province])", stored: true);
+
+			builder.Property(h => h.SearchKeywordsNormalized)
+				.HasComputedColumnSql("dbo.RemoveDiacritics([SearchKeywords])", stored: true);
+
+			builder.Property(h => h.SlugNormalized)
+				.HasComputedColumnSql("dbo.RemoveDiacritics([Slug])", stored: true);
 
 			// Relationships
 			builder.HasOne(h => h.Owner)

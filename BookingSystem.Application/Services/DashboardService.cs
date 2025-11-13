@@ -2,6 +2,7 @@
 using BookingSystem.Application.Contracts;
 using BookingSystem.Application.DTOs.DashboardDTO;
 using BookingSystem.Domain.Repositories;
+using BookingSystem.Infrastructure.Repositories;
 
 namespace BookingSystem.Application.Services
 {
@@ -13,6 +14,7 @@ namespace BookingSystem.Application.Services
 		private readonly IBookingRepository _bookingRepository;
 		private readonly IPaymentRepository _paymentRepository;
 		private readonly IReviewRepository _reviewRepository;
+		private readonly IHostDashboardRepository _hostDashboardRepository;
 
 		public DashboardService(
 			IDashboardRepository dashboardRepository,
@@ -20,6 +22,7 @@ namespace BookingSystem.Application.Services
 			IHostProfileRepository hostProfileRepository,
 			IBookingRepository bookingRepository,
 			IPaymentRepository paymentRepository,
+			IHostDashboardRepository hostDashboardRepository,
 			IReviewRepository reviewRepository)
 		{
 			_dashboardRepository = dashboardRepository;
@@ -28,6 +31,7 @@ namespace BookingSystem.Application.Services
 			_bookingRepository = bookingRepository;
 			_paymentRepository = paymentRepository;
 			_reviewRepository = reviewRepository;
+			_hostDashboardRepository = hostDashboardRepository;
 		}
 
 		public async Task<DashboardOverviewDto> GetOverviewAsync(int months = 12)
@@ -377,6 +381,220 @@ namespace BookingSystem.Application.Services
 			}
 
 			return result;
+		}
+
+		#endregion
+
+		#region Host Dashboard Methods
+
+		public async Task<HostDashboardOverviewDto> GetHostOverviewAsync(int hostId)
+		{
+			var overview = await _hostDashboardRepository.GetHostOverviewAsync(hostId);
+			var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+			var previousMonth = currentMonth.AddMonths(-1);
+
+			// Get current and previous month stats for growth calculation
+			var currentRevenue = await _hostDashboardRepository.GetHostRevenueStatsAsync(
+				hostId, currentMonth, DateTime.UtcNow);
+			var previousRevenue = await _hostDashboardRepository.GetHostRevenueStatsAsync(
+				hostId, previousMonth, currentMonth);
+
+			var revenueGrowth = CalculateGrowthPercentage(
+				currentRevenue.TotalRevenue,
+				previousRevenue.TotalRevenue);
+
+			return new HostDashboardOverviewDto
+			{
+				TotalHomestays = overview.TotalHomestays,
+				ActiveHomestays = overview.ActiveHomestays,
+				TotalBookings = overview.TotalBookings,
+				TotalRevenue = overview.TotalRevenue,
+				AverageRating = Math.Round(overview.AverageRating, 2),
+				TotalReviews = overview.TotalReviews,
+				RevenueGrowth = revenueGrowth,
+				MonthlyRevenue = currentRevenue.TotalRevenue
+			};
+		}
+
+		public async Task<HostRevenueStatisticsDto> GetHostRevenueStatisticsAsync(
+			int hostId,
+			int months = 12)
+		{
+			var startDate = DateTime.UtcNow.AddMonths(-months);
+			var currentMonthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+			var yearStart = new DateTime(DateTime.UtcNow.Year, 1, 1);
+
+			var totalRevenue = await _hostDashboardRepository.GetHostRevenueStatsAsync(
+				hostId, DateTime.MinValue, DateTime.UtcNow);
+			var monthlyRevenue = await _hostDashboardRepository.GetHostRevenueStatsAsync(
+				hostId, currentMonthStart, DateTime.UtcNow);
+			var yearlyRevenue = await _hostDashboardRepository.GetHostRevenueStatsAsync(
+			hostId, yearStart, DateTime.UtcNow);
+
+			var monthlyData = await _hostDashboardRepository.GetHostMonthlyRevenueAsync(hostId, months);
+
+			return new HostRevenueStatisticsDto
+			{
+				TotalRevenue = totalRevenue.TotalRevenue,
+				MonthlyRevenue = monthlyRevenue.TotalRevenue,
+				YearlyRevenue = yearlyRevenue.TotalRevenue,
+				AverageBookingValue = totalRevenue.AverageBookingValue,
+				RevenueBreakdown = new HostRevenueBreakdownDto
+				{
+					BaseRevenue = totalRevenue.BaseRevenue,
+					CleaningFees = totalRevenue.CleaningFees,
+					ServiceFees = totalRevenue.ServiceFees,
+					TaxAmount = totalRevenue.TaxAmount
+				},
+				MonthlyRevenueData = monthlyData.Select(m => new MonthlyHostRevenueDto
+				{
+					Month = m.Month.ToString("MMM yyyy"),
+					Revenue = m.Revenue,
+					BookingCount = m.BookingCount,
+					GuestCount = m.GuestCount
+				}).ToList()
+			};
+		}
+
+		public async Task<HostBookingStatisticsDto> GetHostBookingStatisticsAsync(
+			int hostId,
+			int months = 12)
+		{
+			var startDate = DateTime.UtcNow.AddMonths(-months);
+			var bookingStats = await _hostDashboardRepository.GetHostBookingStatsAsync(
+			hostId, startDate, DateTime.UtcNow);
+
+			var bookingTrends = await _hostDashboardRepository.GetHostBookingTrendsAsync(hostId, months);
+			var occupancyData = await _hostDashboardRepository.GetHostOccupancyRateAsync(
+				hostId, DateTime.UtcNow.AddMonths(-1), DateTime.UtcNow);
+
+			return new HostBookingStatisticsDto
+			{
+				TotalBookings = bookingStats.TotalBookings,
+				PendingBookings = bookingStats.Pending,
+				ConfirmedBookings = bookingStats.Confirmed,
+				CompletedBookings = bookingStats.Completed,
+				CancelledBookings = bookingStats.Cancelled,
+				CancellationRate = Math.Round(bookingStats.CancellationRate, 2),
+				OccupancyRate = Math.Round(occupancyData.OccupancyRate, 2),
+				StatusBreakdown = new HostBookingStatusDto
+				{
+					Pending = bookingStats.Pending,
+					Confirmed = bookingStats.Confirmed,
+					CheckedIn = bookingStats.CheckedIn,
+					Completed = bookingStats.Completed,
+					Cancelled = bookingStats.Cancelled,
+					Rejected = bookingStats.Rejected
+				},
+				MonthlyTrends = bookingTrends.Select(t => new MonthlyBookingTrendDto
+				{
+					Month = t.Month.ToString("MMM yyyy"),
+					TotalBookings = t.TotalBookings,
+					Completed = t.Completed,
+					Cancelled = t.Cancelled,
+					Pending = t.Pending
+				}).ToList()
+			};
+		}
+
+		public async Task<HostReviewStatisticsDto> GetHostReviewStatisticsAsync(int hostId)
+		{
+			var reviews = await _hostDashboardRepository.GetHostReviewsAsync(hostId, 20);
+			var overview = await _hostDashboardRepository.GetHostOverviewAsync(hostId);
+
+			var ratingBreakdown = reviews
+				.GroupBy(r => r.OverallRating)
+				.ToDictionary(g => g.Key, g => g.Count());
+
+			return new HostReviewStatisticsDto
+			{
+				AverageRating = Math.Round(overview.AverageRating, 2),
+				TotalReviews = overview.TotalReviews,
+				AverageCleanlinessRating = reviews.Any()
+					? Math.Round(reviews.Average(r => (double)r.CleanlinessRating), 2)
+					: 0,
+				AverageAccuracyRating = reviews.Any()
+					? Math.Round(reviews.Average(r => (double)r.AccuracyRating), 2)
+					: 0,
+				AverageCommunicationRating = reviews.Any()
+					? Math.Round(reviews.Average(r => (double)r.CommunicationRating), 2)
+					: 0,
+				AverageLocationRating = reviews.Any()
+					? Math.Round(reviews.Average(r => (double)r.LocationRating), 2)
+					: 0,
+				AverageValueRating = reviews.Any()
+					? Math.Round(reviews.Average(r => (double)r.ValueRating), 2)
+					: 0,
+				RatingDistribution = new HostRatingDistributionDto
+				{
+					FiveStar = ratingBreakdown.GetValueOrDefault(5, 0),
+					FourStar = ratingBreakdown.GetValueOrDefault(4, 0),
+					ThreeStar = ratingBreakdown.GetValueOrDefault(3, 0),
+					TwoStar = ratingBreakdown.GetValueOrDefault(2, 0),
+					OneStar = ratingBreakdown.GetValueOrDefault(1, 0)
+				},
+				RecentReviews = reviews.Select(r => new HostRecentReviewDto
+				{
+					ReviewId = r.ReviewId,
+					GuestName = r.GuestName,
+					HomestayTitle = r.HomestayTitle,
+					Rating = r.OverallRating,
+					Comment = r.Comment,
+					CreatedAt = r.CreatedAt
+				}).ToList()
+			};
+		}
+
+		public async Task<HostPerformanceDto> GetHostPerformanceAsync(
+		int hostId,
+			int months = 12)
+		{
+			var homestayPerformance = await _hostDashboardRepository.GetHostHomestaysPerformanceAsync(hostId);
+			var topGuests = await _hostDashboardRepository.GetHostTopGuestsAsync(hostId, 10);
+			var calendarData = await _hostDashboardRepository.GetHostCalendarDataAsync(
+				hostId, DateTime.UtcNow, DateTime.UtcNow.AddMonths(3));
+
+			return new HostPerformanceDto
+			{
+				HomestayPerformance = homestayPerformance.Select(h => new HomestayPerformanceDto
+				{
+					HomestayId = h.HomestayId,
+					HomestayTitle = h.HomestayTitle,
+					BookingCount = h.BookingCount,
+					Revenue = h.Revenue,
+					AverageRating = h.AverageRating,
+					ReviewCount = h.ReviewCount,
+					OccupancyRate = h.OccupancyRate,
+					ViewCount = h.ViewCount
+				}).ToList(),
+				TopGuests = topGuests.Select(g => new TopGuestDto
+				{
+					GuestId = g.GuestId,
+					GuestName = g.GuestName,
+					Email = g.Email,
+					TotalBookings = g.TotalBookings,
+					TotalSpent = g.TotalSpent,
+					LastBookingDate = g.LastBookingDate
+				}).ToList(),
+				UpcomingBookings = calendarData.Bookings.Select(b => new UpcomingBookingDto
+				{
+					BookingId = b.BookingId,
+					HomestayTitle = b.HomestayTitle,
+					GuestName = b.GuestName,
+					CheckInDate = b.CheckInDate,
+					CheckOutDate = b.CheckOutDate,
+					Status = b.Status,
+					TotalAmount = b.TotalAmount
+				}).ToList()
+			};
+		}
+
+		private decimal CalculateGrowthPercentage(decimal current, decimal previous)
+		{
+			if (previous == 0)
+				return current > 0 ? 100 : 0;
+
+			return Math.Round(((current - previous) / previous) * 100, 2);
 		}
 
 		#endregion

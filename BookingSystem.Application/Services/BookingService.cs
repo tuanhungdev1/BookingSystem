@@ -181,6 +181,7 @@ namespace BookingSystem.Application.Services
 			};
 		}
 
+		// BookingSystem.Application.Services/BookingService.cs
 		public async Task<BookingDto> CreateBookingAsync(int guestId, CreateBookingDto request)
 		{
 			_logger.LogInformation("Creating booking for homestay {HomestayId} by guest {GuestId}.",
@@ -191,6 +192,20 @@ namespace BookingSystem.Application.Services
 			if (guest == null)
 			{
 				throw new NotFoundException($"Guest with ID {guestId} not found.");
+			}
+
+			// ✅ THÊM: Validate thông tin người ở thực tế nếu đặt cho người khác
+			if (request.IsBookingForSomeoneElse)
+			{
+				if (string.IsNullOrWhiteSpace(request.ActualGuestFullName))
+				{
+					throw new BadRequestException("Actual guest full name is required when booking for someone else.");
+				}
+
+				if (string.IsNullOrWhiteSpace(request.ActualGuestPhoneNumber))
+				{
+					throw new BadRequestException("Actual guest phone number is required when booking for someone else.");
+				}
 			}
 
 			// Validate dates
@@ -256,6 +271,23 @@ namespace BookingSystem.Application.Services
 					TotalAmount = priceBreakdown.TotalAmount,
 					BookingStatus = BookingStatus.Pending,
 					SpecialRequests = request.SpecialRequests,
+
+					// ✅ THÊM: Lưu thông tin người đặt
+					GuestFullName = request.GuestFullName,
+					GuestEmail = request.GuestEmail,
+					GuestPhoneNumber = request.GuestPhoneNumber,
+					GuestAddress = request.GuestAddress,
+					GuestCity = request.GuestCity,
+					GuestCountry = request.GuestCountry,
+
+					// ✅ THÊM: Lưu thông tin người ở thực tế (nếu có)
+					IsBookingForSomeoneElse = request.IsBookingForSomeoneElse,
+					ActualGuestFullName = request.ActualGuestFullName,
+					ActualGuestEmail = request.ActualGuestEmail,
+					ActualGuestPhoneNumber = request.ActualGuestPhoneNumber,
+					ActualGuestIdNumber = request.ActualGuestIdNumber,
+					ActualGuestNotes = request.ActualGuestNotes,
+
 					CreatedAt = DateTime.UtcNow,
 					UpdatedAt = DateTime.UtcNow
 				};
@@ -264,7 +296,10 @@ namespace BookingSystem.Application.Services
 				await _bookingRepository.SaveChangesAsync();
 				await BlockDatesForBookingAsync(booking, "Pending Booking");
 				await _unitOfWork.CommitTransactionAsync();
-				_logger.LogInformation("Booking {BookingCode} created successfully.", booking.BookingCode);
+
+				_logger.LogInformation("Booking {BookingCode} created successfully{ForSomeoneElse}.",
+					booking.BookingCode,
+					request.IsBookingForSomeoneElse ? " (for someone else)" : "");
 
 				// Reload with details
 				var savedBooking = await _bookingRepository.GetByIdWithDetailsAsync(booking.Id);
@@ -278,6 +313,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
+		// BookingSystem.Application.Services/BookingService.cs
 		public async Task<BookingDto?> UpdateBookingAsync(int bookingId, int userId, UpdateBookingDto request)
 		{
 			_logger.LogInformation("Updating booking {BookingId} by user {UserId}.", bookingId, userId);
@@ -308,10 +344,26 @@ namespace BookingSystem.Application.Services
 			// Can only update if status is Pending or Confirmed
 			if (!isAdmin)
 			{
-				// Can only update if status is Pending or Confirmed
 				if (booking.BookingStatus != BookingStatus.Pending && booking.BookingStatus != BookingStatus.Confirmed)
 				{
 					throw new BadRequestException("Booking cannot be updated in its current status.");
+				}
+			}
+
+			// ✅ THÊM: Validate thông tin người ở thực tế
+			if (request.IsBookingForSomeoneElse.HasValue && request.IsBookingForSomeoneElse.Value)
+			{
+				// Nếu đổi sang đặt cho người khác, phải có thông tin người ở
+				if (string.IsNullOrWhiteSpace(request.ActualGuestFullName) &&
+					string.IsNullOrWhiteSpace(booking.ActualGuestFullName))
+				{
+					throw new BadRequestException("Actual guest full name is required when booking for someone else.");
+				}
+
+				if (string.IsNullOrWhiteSpace(request.ActualGuestPhoneNumber) &&
+					string.IsNullOrWhiteSpace(booking.ActualGuestPhoneNumber))
+				{
+					throw new BadRequestException("Actual guest phone number is required when booking for someone else.");
 				}
 			}
 
@@ -352,7 +404,7 @@ namespace BookingSystem.Application.Services
 			{
 				await _unitOfWork.BeginTransactionAsync();
 
-				// Update fields
+				// Update basic fields
 				if (request.CheckInDate.HasValue)
 					booking.CheckInDate = request.CheckInDate.Value;
 
@@ -380,6 +432,77 @@ namespace BookingSystem.Application.Services
 				if (request.SpecialRequests != null)
 					booking.SpecialRequests = request.SpecialRequests;
 
+				// ✅ THÊM: Update thông tin người đặt (CHỈ ADMIN)
+				if (isAdmin)
+				{
+					if (!string.IsNullOrWhiteSpace(request.GuestFullName))
+						booking.GuestFullName = request.GuestFullName;
+
+					if (!string.IsNullOrWhiteSpace(request.GuestEmail))
+						booking.GuestEmail = request.GuestEmail;
+
+					if (!string.IsNullOrWhiteSpace(request.GuestPhoneNumber))
+						booking.GuestPhoneNumber = request.GuestPhoneNumber;
+
+					if (request.GuestAddress != null)
+						booking.GuestAddress = request.GuestAddress;
+
+					if (request.GuestCity != null)
+						booking.GuestCity = request.GuestCity;
+
+					if (request.GuestCountry != null)
+						booking.GuestCountry = request.GuestCountry;
+
+					_logger.LogInformation("Admin {UserId} updated guest info for booking {BookingId}.", userId, bookingId);
+				}
+
+				// ✅ THÊM: Update thông tin người ở thực tế (GUEST hoặc ADMIN)
+				if (isGuest || isAdmin)
+				{
+					if (request.IsBookingForSomeoneElse.HasValue)
+					{
+						booking.IsBookingForSomeoneElse = request.IsBookingForSomeoneElse.Value;
+
+						// Nếu đổi sang KHÔNG đặt cho người khác, xóa thông tin ActualGuest
+						if (!request.IsBookingForSomeoneElse.Value)
+						{
+							booking.ActualGuestFullName = null;
+							booking.ActualGuestEmail = null;
+							booking.ActualGuestPhoneNumber = null;
+							booking.ActualGuestIdNumber = null;
+							booking.ActualGuestNotes = null;
+
+							_logger.LogInformation("Booking {BookingId} changed to self-booking. Cleared actual guest info.", bookingId);
+						}
+					}
+
+					// Chỉ update nếu đang đặt cho người khác
+					if (booking.IsBookingForSomeoneElse)
+					{
+						if (!string.IsNullOrWhiteSpace(request.ActualGuestFullName))
+							booking.ActualGuestFullName = request.ActualGuestFullName;
+
+						if (request.ActualGuestEmail != null)
+							booking.ActualGuestEmail = request.ActualGuestEmail;
+
+						if (!string.IsNullOrWhiteSpace(request.ActualGuestPhoneNumber))
+							booking.ActualGuestPhoneNumber = request.ActualGuestPhoneNumber;
+
+						if (request.ActualGuestIdNumber != null)
+							booking.ActualGuestIdNumber = request.ActualGuestIdNumber;
+
+						if (request.ActualGuestNotes != null)
+							booking.ActualGuestNotes = request.ActualGuestNotes;
+
+						_logger.LogInformation("Updated actual guest info for booking {BookingId}.", bookingId);
+					}
+				}
+				else if (!isAdmin && (request.GuestFullName != null || request.GuestEmail != null || request.GuestPhoneNumber != null))
+				{
+					// Host cố gắng update thông tin người đặt
+					throw new BadRequestException("Only admin can update guest information.");
+				}
+
 				// Recalculate price if dates changed
 				if (datesChanged)
 				{
@@ -397,6 +520,9 @@ namespace BookingSystem.Application.Services
 					booking.TaxAmount = priceBreakdown.TaxAmount;
 					booking.DiscountAmount = priceBreakdown.DiscountAmount;
 					booking.TotalAmount = priceBreakdown.TotalAmount;
+
+					_logger.LogInformation("Recalculated price for booking {BookingId}. New total: {TotalAmount}.",
+						bookingId, booking.TotalAmount);
 				}
 
 				booking.UpdatedAt = DateTime.UtcNow;

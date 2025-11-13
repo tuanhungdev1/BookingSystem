@@ -4,6 +4,8 @@ using BookingSystem.Domain.Repositories;
 using BookingSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using BookingSystem.Domain.Base.Filter;
+using BookingSystem.Infrastructure.Utils;
+using MailKit.Search;
 
 namespace BookingSystem.Infrastructure.Repositories
 {
@@ -11,6 +13,20 @@ namespace BookingSystem.Infrastructure.Repositories
 	{
 		public HomestayRepository(BookingDbContext context) : base(context)
 		{
+		}
+
+		public async Task<IEnumerable<Homestay>> GetHomestaysByOwnerIdAsync(int ownerId)
+		{
+			return await _context.Homestays
+				.Where(h => h.OwnerId == ownerId && !h.IsDeleted)
+				.ToListAsync();
+		}
+
+		public async Task<IEnumerable<Homestay>> GetHomestaysByHostIdAsync(int hostId)
+		{
+			return await _context.Homestays
+				.Where(h => h.OwnerId == hostId && !h.IsDeleted)
+				.ToListAsync();
 		}
 
 		// ✅ HÀM MỚI: Lấy thông tin chi tiết homestay qua Slug
@@ -62,35 +78,39 @@ namespace BookingSystem.Infrastructure.Repositories
 
 			if (!string.IsNullOrEmpty(filter.Search))
 			{
-				var searchTerm = filter.Search.ToLower();
+				var searchTerm = filter.Search.RemoveDiacritics().ToLower();
+
 				query = query.Where(h =>
-					h.HomestayTitle.ToLower().Contains(searchTerm) ||
-					(h.HomestayDescription != null && h.HomestayDescription.ToLower().Contains(searchTerm)) ||
-					h.FullAddress.ToLower().Contains(searchTerm) ||
-					h.Country.ToLower().Contains(searchTerm) ||
-					h.City.ToLower().Contains(searchTerm) ||
-					(h.SearchKeywords != null && h.SearchKeywords.ToLower().Contains(searchTerm)) ||
-					(h.Slug != null && h.Slug.ToLower().Contains(searchTerm))
-					);
+					h.HomestayTitleNormalized.ToLower().Contains(searchTerm) ||
+					(h.HomestayDescriptionNormalized != null &&
+					 h.HomestayDescriptionNormalized.ToLower().Contains(searchTerm)) ||
+					h.FullAddressNormalized.ToLower().Contains(searchTerm) ||
+					h.CountryNormalized.ToLower().Contains(searchTerm) ||
+					h.CityNormalized.ToLower().Contains(searchTerm) ||
+					(h.SearchKeywordsNormalized != null &&
+					 h.SearchKeywordsNormalized.ToLower().Contains(searchTerm)) ||
+					(h.SlugNormalized != null &&
+					 h.SlugNormalized.ToLower().Contains(searchTerm))
+				);
 			}
 
-			// Location filters
+			// ===== LOCATION FILTERS =====
 			if (!string.IsNullOrEmpty(filter.City))
 			{
-				var city = filter.City.ToLower();
-				query = query.Where(h => h.City.ToLower().Contains(city));
+				var city = filter.City.RemoveDiacritics().ToLower();
+				query = query.Where(h => h.CityNormalized.ToLower().Contains(city));
 			}
 
 			if (!string.IsNullOrEmpty(filter.Province))
 			{
-				var province = filter.Province.ToLower();
-				query = query.Where(h => h.Province.ToLower().Contains(province));
+				var province = filter.Province.RemoveDiacritics().ToLower();
+				query = query.Where(h => h.ProvinceNormalized.ToLower().Contains(province));
 			}
 
 			if (!string.IsNullOrEmpty(filter.Country))
 			{
-				var country = filter.Country.ToLower();
-				query = query.Where(h => h.Country.ToLower().Contains(country));
+				var country = filter.Country.RemoveDiacritics().ToLower();
+				query = query.Where(h => h.CountryNormalized.ToLower().Contains(country));
 			}
 
 			// Radius search (if coordinates provided)

@@ -46,6 +46,130 @@ namespace BookingSystem.Domain.Repositories
 		Task<List<RecentReviewData>> GetRecentReviewsAsync(int take);
 	}
 
+	// Host Dashboard Overview
+	public class HostDashboardOverview
+	{
+		public int TotalHomestays { get; set; }
+		public int ActiveHomestays { get; set; }
+		public int TotalBookings { get; set; }
+		public decimal TotalRevenue { get; set; }
+		public double AverageRating { get; set; }
+		public int TotalReviews { get; set; }
+	}
+
+	// Host Homestay Performance
+	public class HostHomestayPerformance
+	{
+		public int HomestayId { get; set; }
+		public string HomestayTitle { get; set; } = string.Empty;
+		public int BookingCount { get; set; }
+		public decimal Revenue { get; set; }
+		public double AverageRating { get; set; }
+		public int ReviewCount { get; set; }
+		public decimal OccupancyRate { get; set; }
+		public int ViewCount { get; set; }
+	}
+
+	// Host Revenue Statistics
+	public class HostRevenueStats
+	{
+		public decimal TotalRevenue { get; set; }
+		public decimal BaseRevenue { get; set; }
+		public decimal CleaningFees { get; set; }
+		public decimal ServiceFees { get; set; }
+		public decimal TaxAmount { get; set; }
+		public int BookingCount { get; set; }
+		public decimal AverageBookingValue { get; set; }
+	}
+
+	// Monthly Host Revenue
+	public class MonthlyHostRevenue
+	{
+		public DateTime Month { get; set; }
+		public decimal Revenue { get; set; }
+		public int BookingCount { get; set; }
+		public int GuestCount { get; set; }
+	}
+
+	// Host Booking Statistics
+	public class HostBookingStats
+	{
+		public int TotalBookings { get; set; }
+		public int Pending { get; set; }
+		public int Confirmed { get; set; }
+		public int CheckedIn { get; set; }
+		public int Completed { get; set; }
+		public int Cancelled { get; set; }
+		public int Rejected { get; set; }
+		public decimal CancellationRate { get; set; }
+	}
+
+	// Host Booking Trend
+	public class HostBookingTrend
+	{
+		public DateTime Month { get; set; }
+		public int TotalBookings { get; set; }
+		public int Completed { get; set; }
+		public int Cancelled { get; set; }
+		public int Pending { get; set; }
+	}
+
+	// Host Review Summary
+	public class HostReviewSummary
+	{
+		public int ReviewId { get; set; }
+		public string GuestName { get; set; } = string.Empty;
+		public string HomestayTitle { get; set; } = string.Empty;
+		public int OverallRating { get; set; }
+		public int CleanlinessRating { get; set; }
+		public int AccuracyRating { get; set; }
+		public int CommunicationRating { get; set; }
+		public int LocationRating { get; set; }
+		public int ValueRating { get; set; }
+		public string? Comment { get; set; }
+		public DateTime CreatedAt { get; set; }
+	}
+
+	// Host Occupancy Data
+	public class HostOccupancyData
+	{
+		public int TotalDays { get; set; }
+		public int BookedDays { get; set; }
+		public decimal OccupancyRate { get; set; }
+		public int HomestayCount { get; set; }
+	}
+
+	// Top Guest Data
+	public class TopGuestData
+	{
+		public int GuestId { get; set; }
+		public string GuestName { get; set; } = string.Empty;
+		public string Email { get; set; } = string.Empty;
+		public int TotalBookings { get; set; }
+		public decimal TotalSpent { get; set; }
+		public DateTime LastBookingDate { get; set; }
+	}
+
+	// Calendar Booking (nested in HostCalendarData)
+	public class CalendarBooking
+	{
+		public int BookingId { get; set; }
+		public string HomestayTitle { get; set; } = string.Empty;
+		public string GuestName { get; set; } = string.Empty;
+		public DateTime CheckInDate { get; set; }
+		public DateTime CheckOutDate { get; set; }
+		public string Status { get; set; } = string.Empty;
+		public decimal TotalAmount { get; set; }
+	}
+
+	// Host Calendar Data
+	public class HostCalendarData
+	{
+		public List<CalendarBooking> Bookings { get; set; } = new();
+		public DateTime StartDate { get; set; }
+		public DateTime EndDate { get; set; }
+	}
+
 	// DTOs for repository responses
 	public class DailyUserActivity
 	{

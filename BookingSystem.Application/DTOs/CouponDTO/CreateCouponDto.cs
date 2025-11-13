@@ -59,5 +59,7 @@ namespace BookingSystem.Application.DTOs.CouponDTO
 
 		[Range(0, 100, ErrorMessage = "Priority must be between 0 and 100")]
 		public int Priority { get; set; } = 0;
+
+		public string? ActingAsRole { get; set; }
 	}
 }

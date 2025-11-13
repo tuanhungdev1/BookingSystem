@@ -63,6 +63,15 @@ namespace BookingSystem.Domain.Entities
 		public bool IsPetFriendly { get; set; } = false;
 		public bool HasPrivatePool { get; set; } = false;
 
+		public string? HomestayTitleNormalized { get; set; }
+		public string? HomestayDescriptionNormalized { get; set; }
+		public string? FullAddressNormalized { get; set; }
+		public string? CountryNormalized { get; set; }
+		public string? CityNormalized { get; set; }
+		public string? ProvinceNormalized { get; set; }
+		public string? SearchKeywordsNormalized { get; set; }
+		public string? SlugNormalized { get; set; }
+
 		[Required]
 		public int OwnerId { get; set; }
 		public int PropertyTypeId { get; set; }

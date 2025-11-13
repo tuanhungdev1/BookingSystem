@@ -1,4 +1,6 @@
-﻿namespace BookingSystem.Application.DTOs.CouponDTO
+﻿using BookingSystem.Domain.Enums;
+
+namespace BookingSystem.Application.DTOs.CouponDTO
 {
 	public class UpdateCouponDto
 	{
@@ -11,9 +13,12 @@
 		public int? TotalUsageLimit { get; set; }
 		public int? UsagePerUser { get; set; }
 		public decimal? MinimumBookingAmount { get; set; }
+		public CouponScope? Scope { get; set; } 
 		public int? MinimumNights { get; set; }
 		public bool? IsPublic { get; set; }
 		public int? Priority { get; set; }
+		public int? SpecificHomestayId { get; set; }
 		public List<int>? ApplicableHomestayIds { get; set; }
+		public string? ActingAsRole { get; set; }
 	}
 }

@@ -42,7 +42,7 @@ namespace BookingSystem.Controllers
 		}
 
 		[HttpGet]
-		[Authorize(Roles = "Admin")]
+		[AllowAnonymous]
 		public async Task<ActionResult<ApiResponse<PagedResult<PropertyTypeDto>>>> GetPaged([FromQuery] PropertyTypeFilter filter)
 		{
 			var propertyTypes = await _propertyTypeService.GetPagedResultAsync(filter);

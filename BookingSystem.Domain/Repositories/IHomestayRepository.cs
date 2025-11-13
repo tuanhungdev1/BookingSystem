@@ -13,9 +13,10 @@ namespace BookingSystem.Domain.Repositories
 		Task<Homestay?> GetWithDetailsAsync(int id);
 		Task<Homestay?> GetHomestayByIdAsync(int id);
 		Task<bool> IsNameExistsAsync(string name, int? excludeId = null);
-		// Thêm vào interface IHomestayRepository
 		Task<IEnumerable<Homestay>> GetPendingApprovalsAsync();
 		Task<int> CountPendingApprovalsAsync();
 		Task<Homestay?> GetHomestayBySlugAsync(string slug);
+		Task<IEnumerable<Homestay>> GetHomestaysByHostIdAsync(int hostId);
+		Task<IEnumerable<Homestay>> GetHomestaysByOwnerIdAsync(int ownerId);
 	}
 }

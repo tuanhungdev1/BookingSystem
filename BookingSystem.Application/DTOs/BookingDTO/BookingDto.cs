@@ -33,9 +33,24 @@ namespace BookingSystem.Application.DTOs.BookingDTO
 		// Guest Information
 		public int GuestId { get; set; }
 		public string GuestName { get; set; } = string.Empty;
-		public string GuestEmail { get; set; } = string.Empty;
 		public string? GuestPhone { get; set; }
 		public string? GuestAvatar { get; set; }
+
+		// Thông tin người đặt
+		public string GuestFullName { get; set; } = string.Empty;
+		public string GuestEmail { get; set; } = string.Empty;
+		public string GuestPhoneNumber { get; set; } = string.Empty;
+		public string? GuestAddress { get; set; }
+		public string? GuestCity { get; set; }
+		public string? GuestCountry { get; set; }
+
+		// Thông tin người ở thực tế
+		public bool IsBookingForSomeoneElse { get; set; } = false;
+		public string? ActualGuestFullName { get; set; }
+		public string? ActualGuestEmail { get; set; }
+		public string? ActualGuestPhoneNumber { get; set; }
+		public string? ActualGuestIdNumber { get; set; }
+		public string? ActualGuestNotes { get; set; }
 
 		// Homestay Information
 		public BookingHomestayDto Homestay { get; set; } = null!;

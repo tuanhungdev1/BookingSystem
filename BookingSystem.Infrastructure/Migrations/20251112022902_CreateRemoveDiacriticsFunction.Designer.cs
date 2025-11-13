@@ -4,6 +4,7 @@ using BookingSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BookingSystem.Infrastructure.Migrations
 {
     [DbContext(typeof(BookingDbContext))]
-    partial class BookingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251112022902_CreateRemoveDiacriticsFunction")]
+    partial class CreateRemoveDiacriticsFunction
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -177,21 +180,6 @@ namespace BookingSystem.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ActualGuestEmail")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ActualGuestFullName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ActualGuestIdNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ActualGuestNotes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ActualGuestPhoneNumber")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<decimal>("BaseAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -247,35 +235,11 @@ namespace BookingSystem.Infrastructure.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasDefaultValue(0m);
 
-                    b.Property<string>("GuestAddress")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GuestCity")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GuestCountry")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GuestEmail")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GuestFullName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("GuestId")
                         .HasColumnType("int");
 
-                    b.Property<string>("GuestPhoneNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("HomestayId")
                         .HasColumnType("int");
-
-                    b.Property<bool>("IsBookingForSomeoneElse")
-                        .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");

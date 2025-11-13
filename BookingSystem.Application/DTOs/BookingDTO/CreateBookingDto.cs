@@ -29,5 +29,49 @@ namespace BookingSystem.Application.DTOs.BookingDTO
 
 		[MaxLength(1000, ErrorMessage = "Special requests cannot exceed 1000 characters")]
 		public string? SpecialRequests { get; set; }
+
+
+		[Required(ErrorMessage = "Guest full name is required")]
+		[MaxLength(200)]
+		public string GuestFullName { get; set; } = string.Empty;
+
+		[Required(ErrorMessage = "Guest email is required")]
+		[EmailAddress(ErrorMessage = "Invalid email format")]
+		[MaxLength(200)]
+		public string GuestEmail { get; set; } = string.Empty;
+
+		[Required(ErrorMessage = "Guest phone number is required")]
+		[Phone(ErrorMessage = "Invalid phone number format")]
+		[MaxLength(20)]
+		public string GuestPhoneNumber { get; set; } = string.Empty;
+
+		[MaxLength(500)]
+		public string? GuestAddress { get; set; }
+
+		[MaxLength(100)]
+		public string? GuestCity { get; set; }
+
+		[MaxLength(100)]
+		public string? GuestCountry { get; set; }
+
+		// ✅ THÊM: Thông tin đặt cho người khác (optional)
+		public bool IsBookingForSomeoneElse { get; set; } = false;
+
+		[MaxLength(200)]
+		public string? ActualGuestFullName { get; set; }
+
+		[EmailAddress(ErrorMessage = "Invalid actual guest email format")]
+		[MaxLength(200)]
+		public string? ActualGuestEmail { get; set; }
+
+		[Phone(ErrorMessage = "Invalid actual guest phone number format")]
+		[MaxLength(20)]
+		public string? ActualGuestPhoneNumber { get; set; }
+
+		[MaxLength(50)]
+		public string? ActualGuestIdNumber { get; set; }
+
+		[MaxLength(1000)]
+		public string? ActualGuestNotes { get; set; }
 	}
 }

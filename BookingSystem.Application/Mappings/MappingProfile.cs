@@ -43,6 +43,13 @@ namespace BookingSystem.Application.Mappings
 
 		private void ConfigureCouponMappings()
 		{
+
+			CreateMap<CouponUsage, CouponUsageDto>()
+				.ForMember(dest => dest.CouponCode, opt => opt.MapFrom(src => src.Coupon.CouponCode))
+				.ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.FullName)) 
+				.ForMember(dest => dest.BookingCode, opt => opt.MapFrom(src => src.Booking.BookingCode));
+
+
 			CreateMap<Coupon, CouponDto>()
 			   .ForMember(dest => dest.CouponTypeDisplay,
 				   opt => opt.MapFrom(src => src.CouponType.ToString()))
@@ -119,6 +126,15 @@ namespace BookingSystem.Application.Mappings
 					opt => opt.MapFrom(src => src.BookingStatus.ToString()))
 				.ForMember(dest => dest.Homestay, opt => opt.MapFrom(src => src.Homestay))
 				.ForMember(dest => dest.Payments, opt => opt.MapFrom(src => src.Payments))
+				.ForMember(dest => dest.GuestFullName, opt => opt.MapFrom(src => src.GuestFullName))
+			.ForMember(dest => dest.GuestEmail, opt => opt.MapFrom(src => src.GuestEmail))
+			.ForMember(dest => dest.GuestPhoneNumber, opt => opt.MapFrom(src => src.GuestPhoneNumber))
+			.ForMember(dest => dest.IsBookingForSomeoneElse, opt => opt.MapFrom(src => src.IsBookingForSomeoneElse))
+			.ForMember(dest => dest.ActualGuestFullName, opt => opt.MapFrom(src => src.ActualGuestFullName))
+			.ForMember(dest => dest.ActualGuestEmail, opt => opt.MapFrom(src => src.ActualGuestEmail))
+			.ForMember(dest => dest.ActualGuestPhoneNumber, opt => opt.MapFrom(src => src.ActualGuestPhoneNumber))
+			.ForMember(dest => dest.ActualGuestIdNumber, opt => opt.MapFrom(src => src.ActualGuestIdNumber))
+			.ForMember(dest => dest.ActualGuestNotes, opt => opt.MapFrom(src => src.ActualGuestNotes))
 				.ReverseMap();
 
 			CreateMap<Homestay, BookingHomestayDto>()
@@ -151,7 +167,7 @@ namespace BookingSystem.Application.Mappings
 			CreateMap<WishlistItem, WishlistItemDto>();
 		}
 
-
+		
 
 		private void ConfigureUserMappings()
 		{

@@ -30,7 +30,7 @@ namespace BookingSystem.Infrastructure.DI
 			services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
 			services.AddScoped<IPaymentRepository, PaymentRepository>();
 			services.AddScoped<IDashboardRepository, DashboardRepository>();
-
+			services.AddScoped<IHostDashboardRepository, HostDashboardRepository>();
 
 			return services;
 		}
