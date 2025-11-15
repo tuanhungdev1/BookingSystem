@@ -230,6 +230,24 @@ namespace BookingSystem.Controllers
 			int id,
 			[FromBody] RefundPaymentDto dto)
 		{
+
+			if (dto.RefundAmount <= 0)
+			{
+				return BadRequest(new ApiResponse<PaymentDto>
+				{
+					Success = false,
+					Message = "Refund amount must be greater than 0"
+				});
+			}
+
+			if (string.IsNullOrWhiteSpace(dto.RefundReason))
+			{
+				return BadRequest(new ApiResponse<PaymentDto>
+				{
+					Success = false,
+					Message = "Refund reason is required"
+				});
+			}
 			var userId = GetCurrentUserId();
 			var result = await _paymentService.RefundPaymentAsync(id, userId, dto);
 
@@ -269,6 +287,20 @@ namespace BookingSystem.Controllers
 			return Ok(new ApiResponse<IEnumerable<PaymentDto>>
 			{
 				Success = true,
+				Data = result
+			});
+		}
+
+		[Authorize(Roles = "Host,Admin")]
+		[HttpGet("{id:int}/refund-status")]
+		public async Task<ActionResult<ApiResponse<RefundStatusDto>>> GetRefundStatus(int id)
+		{
+			var result = await _paymentService.GetRefundStatusAsync(id);
+
+			return Ok(new ApiResponse<RefundStatusDto>
+			{
+				Success = true,
+				Message = "Refund status retrieved successfully",
 				Data = result
 			});
 		}

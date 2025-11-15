@@ -13,5 +13,8 @@ namespace BookingSystem.Domain.Repositories
 		Task<IEnumerable<CouponUsage>> GetByUserIdAsync(int userId);
 		Task<IEnumerable<CouponUsage>> GetByCouponIdAsync(int couponId);
 		Task<CouponUsage?> GetByBookingIdAsync(int bookingId);
+		Task<IEnumerable<CouponUsage>> GetAllByBookingIdAsync(int bookingId);
+		Task<List<CouponUsage>> GetCouponUsagesWithCouponByBookingIdAsync(int bookingId);
+		void UpdateCouponUsagesRange(IEnumerable<CouponUsage> couponUsages);
 	}
 }

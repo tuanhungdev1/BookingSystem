@@ -28,5 +28,9 @@ namespace BookingSystem.Domain.Repositories
 		Task RemoveCouponHomestaysAsync(List<CouponHomestay> couponHomestays);
 		Task AddCouponHomestaysAsync(List<CouponHomestay> couponHomestays);
 		Task<List<Coupon>> GetExpiredActiveCouponsAsync();
+
+		Task<IEnumerable<Coupon>> GetApplicableCouponsForHomestayAsync(
+		int homestayId,
+		bool includeInactive = false);
 	}
 }

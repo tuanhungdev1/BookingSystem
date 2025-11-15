@@ -8,9 +8,10 @@ using BookingSystem.Domain.Enums;
 using BookingSystem.Domain.Exceptions;
 using BookingSystem.Domain.Repositories;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace BookingSystem.Application.Services
+namespace BookingSystem.Application.ServiceUpdate
 {
 	public class BookingService : IBookingService
 	{
@@ -21,6 +22,8 @@ namespace BookingSystem.Application.Services
 		private readonly IAvailabilityCalendarRepository _availabilityCalendarRepository;
 		private readonly UserManager<User> _userManager;
 		private readonly ILogger<BookingService> _logger;
+		private readonly IEmailService _emailService;
+		private readonly ICouponUsageRepository _couponUsageRepository;
 
 		private const decimal CLEANING_FEE_PERCENTAGE = 0.05m; // 5% of base amount
 		private const decimal SERVICE_FEE_PERCENTAGE = 0.10m;  // 10% of base amount
@@ -35,6 +38,8 @@ namespace BookingSystem.Application.Services
 			IHomestayRepository homestayRepository,
 			IAvailabilityCalendarRepository availabilityCalendarRepository,
 			UserManager<User> userManager,
+			IEmailService emailService,
+			ICouponUsageRepository couponUsageRepository,
 			ILogger<BookingService> logger)
 		{
 			_unitOfWork = unitOfWork;
@@ -44,6 +49,8 @@ namespace BookingSystem.Application.Services
 			_availabilityCalendarRepository = availabilityCalendarRepository;
 			_userManager = userManager;
 			_logger = logger;
+			_couponUsageRepository = couponUsageRepository;
+			_emailService = emailService;
 		}
 
 		private string GenerateBookingCode()
@@ -297,6 +304,31 @@ namespace BookingSystem.Application.Services
 				await BlockDatesForBookingAsync(booking, "Pending Booking");
 				await _unitOfWork.CommitTransactionAsync();
 
+				_ = _emailService.SendBookingConfirmationAsync(
+					booking.Guest.Email!,
+					booking.Guest.FullName,
+					booking.BookingCode,
+					booking.Homestay.HomestayTitle,
+					booking.CheckInDate,
+					booking.CheckOutDate,
+					booking.TotalAmount
+				);
+
+				// ✅ GỬI EMAIL CHO HOST
+				var host = await _userManager.FindByIdAsync(booking.Homestay.OwnerId.ToString());
+				if (host != null)
+				{
+					_ = _emailService.SendNewBookingNotificationToHostAsync(
+						host.Email!,
+						host.FullName,
+						booking.BookingCode,
+						booking.Guest.FullName,
+						booking.Homestay.HomestayTitle,
+						booking.CheckInDate,
+						booking.CheckOutDate
+					);
+				}
+
 				_logger.LogInformation("Booking {BookingCode} created successfully{ForSomeoneElse}.",
 					booking.BookingCode,
 					request.IsBookingForSomeoneElse ? " (for someone else)" : "");
@@ -389,13 +421,25 @@ namespace BookingSystem.Application.Services
 						throw new BadRequestException("Check-in date cannot be in the past.");
 					}
 
-					// Check availability for new dates (excluding current booking)
-					var isAvailable = await IsHomestayAvailableAsync(
-						booking.HomestayId, newCheckIn, newCheckOut, bookingId);
+					await UnblockDatesForBookingAsync(booking);
 
-					if (!isAvailable)
+					try
 					{
-						throw new BadRequestException("Homestay is not available for the new dates.");
+						// ✅ 2. Check availability với ngày mới
+						var isAvailable = await IsHomestayAvailableAsync(
+							booking.HomestayId, newCheckIn, newCheckOut, bookingId);
+
+						if (!isAvailable)
+						{
+							throw new BadRequestException("Homestay is not available for the new dates.");
+						}
+					}
+					catch
+					{
+						// ✅ 3. Nếu fail, block lại ngày cũ (rollback)
+						await BlockDatesForBookingAsync(booking,
+							booking.BookingStatus == BookingStatus.Confirmed ? "Confirmed Booking" : "Pending Booking");
+						throw; // Re-throw exception
 					}
 				}
 			}
@@ -504,6 +548,7 @@ namespace BookingSystem.Application.Services
 				}
 
 				// Recalculate price if dates changed
+				// Recalculate price if dates changed
 				if (datesChanged)
 				{
 					var priceBreakdown = await CalculateBookingPriceAsync(new BookingPriceCalculationDto
@@ -514,15 +559,122 @@ namespace BookingSystem.Application.Services
 						NumberOfGuests = booking.NumberOfGuests
 					});
 
+					var oldTotalAmount = booking.TotalAmount;
+					var oldBaseAmount = booking.BaseAmount;
+
 					booking.BaseAmount = priceBreakdown.BaseAmount;
 					booking.CleaningFee = priceBreakdown.CleaningFee;
 					booking.ServiceFee = priceBreakdown.ServiceFee;
 					booking.TaxAmount = priceBreakdown.TaxAmount;
-					booking.DiscountAmount = priceBreakdown.DiscountAmount;
-					booking.TotalAmount = priceBreakdown.TotalAmount;
 
-					_logger.LogInformation("Recalculated price for booking {BookingId}. New total: {TotalAmount}.",
-						bookingId, booking.TotalAmount);
+					// ✅ XỬ LÝ MÃ GIẢM GIÁ: Tính lại discount dựa trên coupon đã dùng
+					var couponUsages = await _couponUsageRepository.GetCouponUsagesWithCouponByBookingIdAsync(booking.Id);
+
+					decimal totalCouponDiscount = 0;
+
+					if (couponUsages.Any())
+					{
+						foreach (var usage in couponUsages)
+						{
+							var coupon = usage.Coupon;
+
+							// Kiểm tra coupon còn hiệu lực
+							if (coupon.IsActive && coupon.EndDate >= DateTime.UtcNow) // Sửa: EndDate (không có ExpiryDate)
+							{
+								decimal discount = 0;
+
+								if (coupon.CouponType == CouponType.Percentage) // Sửa: CouponType (không phải DiscountType)
+								{
+									// Tính % discount dựa trên BaseAmount mới
+									discount = booking.BaseAmount * (coupon.DiscountValue / 100);
+
+									// Giới hạn theo MaxDiscountAmount nếu có
+									if (coupon.MaxDiscountAmount.HasValue)
+									{
+										discount = Math.Min(discount, coupon.MaxDiscountAmount.Value);
+									}
+								}
+								else // FixedAmount
+								{
+									discount = coupon.DiscountValue;
+								}
+
+								// Cập nhật DiscountAmount mới cho CouponUsage
+								usage.DiscountAmount = discount;
+								totalCouponDiscount += discount;
+
+								_logger.LogInformation(
+									"Recalculated discount for coupon {CouponCode}: {Discount}",
+									coupon.CouponCode, discount); // Sửa: CouponCode (không phải Code)
+							}
+							else
+							{
+								_logger.LogWarning(
+									"Coupon {CouponCode} is no longer valid. Removing discount.",
+									coupon.CouponCode);
+							}
+						}
+
+						// Lưu lại DiscountAmount mới vào CouponUsage
+						_couponUsageRepository.UpdateCouponUsagesRange(couponUsages); // Dùng UpdateRange thay vì Update
+					}
+
+					// DiscountAmount từ hệ thống (weekly/monthly) + coupon
+					var systemDiscount = priceBreakdown.DiscountAmount; // Weekly/Monthly discount
+					booking.DiscountAmount = systemDiscount + totalCouponDiscount;
+
+					// Tính lại TotalAmount với discount mới
+					var subtotal = booking.BaseAmount - systemDiscount + booking.CleaningFee + booking.ServiceFee;
+					booking.TotalAmount = subtotal + booking.TaxAmount - totalCouponDiscount;
+
+					// Đảm bảo TotalAmount không âm
+					if (booking.TotalAmount < 0) booking.TotalAmount = 0;
+
+					// ✅ XỬ LÝ PAYMENT
+					var totalPaid = booking.Payments
+						.Where(p => p.PaymentStatus == PaymentStatus.Completed)
+						.Sum(p => p.PaymentAmount);
+
+					var priceDifference = booking.TotalAmount - oldTotalAmount;
+
+					if (priceDifference > 0)
+					{
+						var remainingAmount = booking.TotalAmount - totalPaid;
+
+						if (remainingAmount > 0)
+						{
+							_logger.LogInformation(
+								"Booking {BookingId} price increased by {Difference}. Customer needs to pay additional {Remaining}.",
+								bookingId, priceDifference, remainingAmount);
+
+							if (booking.BookingStatus == BookingStatus.Confirmed && !isAdmin)
+							{
+								booking.BookingStatus = BookingStatus.Pending;
+								booking.PaymentNotes = $"Cần thanh toán thêm {remainingAmount:N0} VNĐ do thay đổi đặt phòng";
+
+								_logger.LogInformation(
+									"Booking {BookingId} status changed to Pending due to price increase.",
+									bookingId);
+							}
+						}
+					}
+					else if (priceDifference < 0)
+					{
+						var overpaidAmount = totalPaid - booking.TotalAmount;
+
+						if (overpaidAmount > 0)
+						{
+							_logger.LogInformation(
+								"Booking {BookingId} price decreased by {Difference}. Overpaid amount: {Overpaid}.",
+								bookingId, Math.Abs(priceDifference), overpaidAmount);
+
+							booking.PaymentNotes = $"Đã thanh toán thừa {overpaidAmount:N0} VNĐ, sẽ được hoàn lại";
+						}
+					}
+
+					_logger.LogInformation(
+						"Recalculated price for booking {BookingId}. Old: {OldTotal}, New: {NewTotal}, Paid: {TotalPaid}, CouponDiscount: {CouponDiscount}",
+						bookingId, oldTotalAmount, booking.TotalAmount, totalPaid, totalCouponDiscount);
 				}
 
 				booking.UpdatedAt = DateTime.UtcNow;
@@ -696,6 +848,16 @@ namespace BookingSystem.Application.Services
 				// TODO: Send confirmation email/notification to guest
 				await BlockDatesForBookingAsync(booking, "Confirmed Booking");
 				await _unitOfWork.CommitTransactionAsync();
+
+				_ = _emailService.SendBookingConfirmationAsync(
+					booking.Guest.Email!,
+					booking.Guest.FullName,
+					booking.BookingCode,
+					booking.Homestay.HomestayTitle,
+					booking.CheckInDate,
+					booking.CheckOutDate,
+					booking.TotalAmount
+				);
 				_logger.LogInformation("Booking {BookingId} confirmed successfully by {Role} {UserId}.",
 					bookingId, isAdmin ? "Admin" : "Host", hostId);
 
@@ -758,6 +920,14 @@ namespace BookingSystem.Application.Services
 				// TODO: Process refund if payment was made
 				await UnblockDatesForBookingAsync(booking);
 				await _unitOfWork.CommitTransactionAsync();
+
+				_ = _emailService.SendBookingRejectedAsync(
+					booking.Guest.Email!,
+					booking.Guest.FullName,
+					booking.BookingCode,
+					booking.Homestay.HomestayTitle,
+					reason
+				);
 				_logger.LogInformation("Booking {BookingId} rejected successfully by {Role} {UserId}.",
 					bookingId, isAdmin ? "Admin" : "Host", hostId);
 
@@ -828,6 +998,12 @@ namespace BookingSystem.Application.Services
 				// TODO: Process refund
 				await UnblockDatesForBookingAsync(booking);
 				await _unitOfWork.CommitTransactionAsync();
+				_ = _emailService.SendBookingCancelledAsync(
+					booking.Guest.Email!,
+					booking.Guest.FullName,
+					booking.BookingCode,
+					booking.Homestay.HomestayTitle
+				);
 				_logger.LogInformation("Booking {BookingId} cancelled successfully by {Role} {UserId}.",
 					bookingId, isAdmin ? "Admin" : "Guest", userId);
 
@@ -1100,8 +1276,16 @@ namespace BookingSystem.Application.Services
 			var startDate = DateOnly.FromDateTime(checkInDate);
 			var endDate = DateOnly.FromDateTime(checkOutDate).AddDays(-1); // Don't include checkout date
 
+			// ✅ THÊM: Lấy booking code để loại trừ
+			string excludeBookingCode = null;
+			if (excludeBookingId.HasValue)
+			{
+				var booking = await _bookingRepository.GetByIdAsync(excludeBookingId.Value);
+				excludeBookingCode = booking?.BookingCode;
+			}
+
 			var isCalendarAvailable = await _availabilityCalendarRepository.IsDateRangeAvailableAsync(
-				homestayId, startDate, endDate);
+				homestayId, startDate, endDate, excludeBookingCode);
 
 			return isCalendarAvailable;
 		}

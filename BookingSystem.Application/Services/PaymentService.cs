@@ -26,6 +26,7 @@ namespace BookingSystem.Application.Services
 		private readonly IPaymentGatewayFactory _paymentGatewayFactory;
 		private readonly IHttpContextAccessor _httpContextAccessor;
 		private readonly ILogger<PaymentService> _logger;
+		private readonly IEmailService _emailService;
 
 		public PaymentService(
 			IUnitOfWork unitOfWork,
@@ -35,6 +36,7 @@ namespace BookingSystem.Application.Services
 			UserManager<User> userManager,
 			IPaymentGatewayFactory paymentGatewayFactory,
 			IHttpContextAccessor httpContextAccessor,
+			IEmailService emailService,
 			ILogger<PaymentService> logger)
 		{
 			_unitOfWork = unitOfWork;
@@ -44,6 +46,7 @@ namespace BookingSystem.Application.Services
 			_userManager = userManager;
 			_paymentGatewayFactory = paymentGatewayFactory;
 			_httpContextAccessor = httpContextAccessor;
+			_emailService = emailService;
 			_logger = logger;
 		}
 
@@ -297,6 +300,17 @@ namespace BookingSystem.Application.Services
 							}
 						}
 					}
+
+					if (callbackResult.Success && booking != null)
+					{
+						_ = _emailService.SendPaymentSuccessAsync(
+							booking.Guest.Email!,
+							booking.Guest.FullName,
+							booking.BookingCode,
+							payment.PaymentAmount,
+							payment.PaymentMethod.ToString()
+						);
+					}
 				}
 				else
 				{
@@ -309,10 +323,22 @@ namespace BookingSystem.Application.Services
 					_paymentRepository.Update(payment);
 					await _paymentRepository.SaveChangesAsync();
 
+					var booking = await _bookingRepository.GetByIdWithDetailsAsync(bookingId);
+					if (booking != null)
+					{
+						_ = _emailService.SendPaymentFailedAsync(
+							booking.Guest.Email!,
+							booking.Guest.FullName,
+							booking.BookingCode,
+							callbackResult.Message
+						);
+					}
 					_logger.LogWarning("Payment {PaymentId} failed: {Reason}", payment.Id, callbackResult.Message);
 				}
 
 				await _unitOfWork.CommitTransactionAsync();
+				
+
 				return _mapper.Map<PaymentDto>(payment);
 			}
 			catch (Exception ex)
@@ -487,6 +513,27 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
+		public async Task<RefundStatusDto> GetRefundStatusAsync(int paymentId)
+		{
+			var payment = await _paymentRepository.GetByIdWithDetailsAsync(paymentId);
+			if (payment == null)
+			{
+				throw new NotFoundException($"Payment with ID {paymentId} not found.");
+			}
+
+			var refundedAmount = payment.RefundAmount ?? 0;
+			var refundableAmount = payment.PaymentAmount - refundedAmount;
+
+			return new RefundStatusDto
+			{
+				PaymentId = payment.Id,
+				OriginalAmount = payment.PaymentAmount,
+				RefundedAmount = refundedAmount,
+				RefundableAmount = refundableAmount,
+				CanRefund = payment.PaymentStatus == PaymentStatus.Completed && refundableAmount > 0
+			};
+		}
+
 		public async Task<PaymentDto> RefundPaymentAsync(int paymentId, int userId, RefundPaymentDto request)
 		{
 			_logger.LogInformation("Refunding payment {PaymentId} by user {UserId}.", paymentId, userId);
@@ -517,10 +564,21 @@ namespace BookingSystem.Application.Services
 				throw new BadRequestException("Only completed payments can be refunded.");
 			}
 
+			if (payment.RefundAmount.HasValue && payment.RefundAmount.Value > 0)
+			{
+				var remainingRefundable = payment.PaymentAmount - payment.RefundAmount.Value;
+				if (request.RefundAmount > remainingRefundable)
+				{
+					throw new BadRequestException($"Refund amount exceeds remaining refundable amount of {remainingRefundable:C}.");
+				}
+			}
+
 			if (request.RefundAmount > payment.PaymentAmount)
 			{
 				throw new BadRequestException($"Refund amount cannot exceed payment amount of {payment.PaymentAmount:C}.");
 			}
+
+			
 
 			try
 			{
@@ -573,6 +631,13 @@ namespace BookingSystem.Application.Services
 				await _paymentRepository.SaveChangesAsync();
 
 				await _unitOfWork.CommitTransactionAsync();
+
+				_ = _emailService.SendRefundProcessedAsync(
+					payment.Booking.Guest.Email!,
+					payment.Booking.Guest.FullName,
+					payment.Booking.BookingCode,
+					request.RefundAmount
+				);
 				_logger.LogInformation("Payment {PaymentId} refunded successfully.", paymentId);
 
 				return _mapper.Map<PaymentDto>(payment);

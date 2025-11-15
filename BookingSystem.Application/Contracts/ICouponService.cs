@@ -22,8 +22,8 @@ namespace BookingSystem.Application.Contracts
 
 		// Coupon Usage
 		Task<CouponUsageDto> ApplyCouponToBookingAsync(int bookingId, string couponCode, int userId);
-		Task<bool> RemoveCouponFromBookingAsync(int bookingId, int userId);
-		Task<CouponUsageDto?> GetCouponUsageByBookingAsync(int bookingId);
+		Task<bool> RemoveCouponFromBookingAsync(int bookingId, int userId, string couponCode);
+		Task<IEnumerable<CouponUsageDto>> GetCouponUsagesByBookingAsync(int bookingId);
 		Task<IEnumerable<CouponUsageDto>> GetUserCouponUsageHistoryAsync(int userId);
 		Task<IEnumerable<CouponUsageDto>> GetCouponUsageHistoryAsync(int couponId);
 
@@ -35,5 +35,15 @@ namespace BookingSystem.Application.Contracts
 		// Statistics & Reporting
 		Task<CouponStatisticsDto> GetCouponStatisticsAsync(int? createdByUserId = null);
 		Task ProcessExpiredCouponsAsync();
+
+		Task<IEnumerable<CouponDto>> GetApplicableCouponsForHomestayAsync(
+		int homestayId,
+		bool includeInactive = false);
+
+		Task<IEnumerable<CouponDto>> GetActiveApplicableCouponsForHomestayAsync(
+	   int homestayId,
+	   int? userId = null,
+	   decimal? bookingAmount = null,
+	   int? numberOfNights = null);
 	}
 }

@@ -16,6 +16,29 @@ namespace BookingSystem.Infrastructure.Repositories
 		{
 		}
 
+		public async Task<List<CouponUsage>> GetCouponUsagesWithCouponByBookingIdAsync(int bookingId)
+		{
+			return await _context.CouponUsages
+				.Include(cu => cu.Coupon)
+				.Where(cu => cu.BookingId == bookingId)
+				.ToListAsync();
+		}
+
+		public void UpdateCouponUsagesRange(IEnumerable<CouponUsage> couponUsages)
+		{
+			_context.CouponUsages.UpdateRange(couponUsages);
+		}
+
+		public async Task<IEnumerable<CouponUsage>> GetAllByBookingIdAsync(int bookingId)
+		{
+			return await _context.CouponUsages
+				.Include(cu => cu.Coupon)
+				.Include(cu => cu.User)
+				.Where(cu => cu.BookingId == bookingId)
+				.OrderByDescending(cu => cu.UsedAt)
+				.ToListAsync();
+		}
+
 		public async Task<IEnumerable<CouponUsage>> GetByUserIdAsync(int userId)
 		{
 			return await _dbSet

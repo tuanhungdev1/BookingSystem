@@ -12,7 +12,11 @@ namespace BookingSystem.Domain.Repositories
 		Task<IEnumerable<AvailabilityCalendar>> GetAvailableDatesAsync(int homestayId, DateOnly startDate, DateOnly endDate);
 		Task<IEnumerable<AvailabilityCalendar>> GetBlockedDatesAsync(int homestayId, DateOnly startDate, DateOnly endDate);
 		Task<bool> IsDateAvailableAsync(int homestayId, DateOnly date);
-		Task<bool> IsDateRangeAvailableAsync(int homestayId, DateOnly startDate, DateOnly endDate);
+		Task<bool> IsDateRangeAvailableAsync(
+	int homestayId,
+	DateOnly startDate,
+	DateOnly endDate,
+	string excludeBookingCode = null);
 		Task<int> CountAvailableDaysAsync(int homestayId, DateOnly startDate, DateOnly endDate);
 		Task<PagedResult<AvailabilityCalendar>> GetCalendarWithFilterAsync(AvailabilityCalendarFilter filter);
 		Task<bool> ExistsAsync(int homestayId, DateOnly date);

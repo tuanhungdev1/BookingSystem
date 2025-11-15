@@ -84,29 +84,41 @@ namespace BookingSystem.Infrastructure.Repositories
 			return calendar.IsAvailable && !calendar.IsBlocked;
 		}
 
-		public async Task<bool> IsDateRangeAvailableAsync(int homestayId, DateOnly startDate, DateOnly endDate)
+		public async Task<bool> IsDateRangeAvailableAsync(
+	int homestayId,
+	DateOnly startDate,
+	DateOnly endDate,
+	string excludeBookingCode = null) // ✅ THÊM
 		{
-			// Check if all dates in the range are available
 			var calendars = await _dbSet
 				.Where(ac => ac.HomestayId == homestayId
 					&& ac.AvailableDate >= startDate
 					&& ac.AvailableDate <= endDate)
 				.ToListAsync();
 
-			// Generate all dates in range
 			var totalDays = endDate.DayNumber - startDate.DayNumber + 1;
 			var allDatesInRange = Enumerable.Range(0, totalDays)
 				.Select(offset => startDate.AddDays(offset))
 				.ToList();
 
-			// Check each date
 			foreach (var date in allDatesInRange)
 			{
 				var calendar = calendars.FirstOrDefault(c => c.AvailableDate == date);
 
-				// If calendar exists and is not available or is blocked, return false
-				if (calendar != null && (!calendar.IsAvailable || calendar.IsBlocked))
-					return false;
+				if (calendar != null)
+				{
+					// ✅ THÊM: Nếu bị block bởi chính booking đang update, bỏ qua
+					if (!string.IsNullOrEmpty(excludeBookingCode) &&
+						calendar.BlockReason != null &&
+						calendar.BlockReason.Contains(excludeBookingCode))
+					{
+						continue; // Bỏ qua ngày này
+					}
+
+					// Check không available hoặc bị block
+					if (!calendar.IsAvailable || calendar.IsBlocked)
+						return false;
+				}
 			}
 
 			return true;

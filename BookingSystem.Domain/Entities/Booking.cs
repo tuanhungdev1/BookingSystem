@@ -35,6 +35,8 @@ namespace BookingSystem.Domain.Entities
 
 		public string? CancellationReason { get; set; }
 
+		public string? PaymentNotes { get; set; }
+
 		public DateTime? CancelledAt { get; set; }
 
 		public string? CancelledBy { get; set; }
@@ -65,5 +67,6 @@ namespace BookingSystem.Domain.Entities
 		public virtual Homestay Homestay { get; set; } = null!;
 		public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 		public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
+		public virtual ICollection<CouponUsage> CouponUsages { get; set; } = new List<CouponUsage>();
 	}
 }

@@ -24,5 +24,7 @@ namespace BookingSystem.Application.DTOs.CouponDTO
 
 		[Required(ErrorMessage = "Check-out date is required")]
 		public DateTime CheckOutDate { get; set; }
+
+		public int BookingId { get; set; }
 	}
 }

@@ -3,6 +3,7 @@ using BookingSystem.Application.Contracts;
 using BookingSystem.Application.Services;
 using BookingSystem.Infrastructure.PaymentGateways;
 using BookingSystem.Application.Factories;
+using BookingSystem.Application.ServiceUpdate;
 
 namespace BookingSystem.Application.DI
 {

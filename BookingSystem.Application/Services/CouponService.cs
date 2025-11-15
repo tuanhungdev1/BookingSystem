@@ -45,6 +45,112 @@ namespace BookingSystem.Application.Services
 
 		#region CRUD Operations
 
+		public async Task<IEnumerable<CouponDto>> GetApplicableCouponsForHomestayAsync(
+	int homestayId,
+	bool includeInactive = false)
+		{
+			_logger.LogInformation("Getting applicable coupons for homestay {HomestayId}.", homestayId);
+
+			// Validate homestay exists
+			var homestay = await _homestayRepository.GetByIdAsync(homestayId);
+			if (homestay == null)
+			{
+				throw new NotFoundException($"Homestay with ID {homestayId} not found.");
+			}
+
+			// Lấy tất cả coupon áp dụng cho homestay này
+			var coupons = await _couponRepository.GetApplicableCouponsForHomestayAsync(
+				homestayId, includeInactive);
+
+			return _mapper.Map<IEnumerable<CouponDto>>(coupons);
+		}
+
+		public async Task<IEnumerable<CouponDto>> GetActiveApplicableCouponsForHomestayAsync(
+	int homestayId,
+	int? userId = null,
+	decimal? bookingAmount = null,
+	int? numberOfNights = null)
+		{
+			_logger.LogInformation(
+				"Getting active applicable coupons for homestay {HomestayId}, user {UserId}.",
+				homestayId, userId);
+
+			// Validate homestay
+			var homestay = await _homestayRepository.GetByIdAsync(homestayId);
+			if (homestay == null)
+			{
+				throw new NotFoundException($"Homestay with ID {homestayId} not found.");
+			}
+
+			if (!homestay.IsActive || !homestay.IsApproved)
+			{
+				throw new BadRequestException("This homestay is not available for booking.");
+			}
+
+			// Lấy tất cả coupon active áp dụng cho homestay
+			var coupons = await _couponRepository.GetApplicableCouponsForHomestayAsync(
+				homestayId, includeInactive: false);
+
+			var now = DateTime.UtcNow;
+			var applicableCoupons = new List<Coupon>();
+
+			foreach (var coupon in coupons)
+			{
+				// Kiểm tra ngày hiệu lực
+				if (coupon.StartDate > now || coupon.EndDate < now)
+					continue;
+
+				// Kiểm tra usage limit
+				if (coupon.TotalUsageLimit.HasValue &&
+					coupon.CurrentUsageCount >= coupon.TotalUsageLimit.Value)
+					continue;
+
+				// Nếu có userId, kiểm tra usage per user
+				if (userId.HasValue && coupon.UsagePerUser.HasValue)
+				{
+					var userUsageCount = await _couponRepository.GetUserCouponUsageCountAsync(
+						coupon.Id, userId.Value);
+
+					if (userUsageCount >= coupon.UsagePerUser.Value)
+						continue;
+				}
+
+				// Nếu có bookingAmount, kiểm tra minimum booking amount
+				if (bookingAmount.HasValue && coupon.MinimumBookingAmount.HasValue)
+				{
+					if (bookingAmount.Value < coupon.MinimumBookingAmount.Value)
+						continue;
+				}
+
+				// Nếu có numberOfNights, kiểm tra minimum nights
+				if (numberOfNights.HasValue && coupon.MinimumNights.HasValue)
+				{
+					if (numberOfNights.Value < coupon.MinimumNights.Value)
+						continue;
+				}
+
+				// Nếu là first booking only, kiểm tra user đã có booking chưa
+				if (userId.HasValue && coupon.IsFirstBookingOnly)
+				{
+					var hasCompletedBooking = await _bookingRepository.HasUserCompletedBookingAsync(
+						userId.Value);
+
+					if (hasCompletedBooking)
+						continue;
+				}
+
+				applicableCoupons.Add(coupon);
+			}
+
+			// Sắp xếp theo priority (cao xuống thấp) và discount value
+			var sortedCoupons = applicableCoupons
+				.OrderByDescending(c => c.Priority)
+				.ThenByDescending(c => c.DiscountValue)
+				.ToList();
+
+			return _mapper.Map<IEnumerable<CouponDto>>(sortedCoupons);
+		}
+
 		public async Task<CouponDto> CreateCouponAsync(int userId, CreateCouponDto request)
 		{
 			_logger.LogInformation("Creating coupon {CouponCode} by user {UserId}.", request.CouponCode, userId);
@@ -623,6 +729,14 @@ namespace BookingSystem.Application.Services
 				return result;
 			}
 
+			var existingUsages = await _couponUsageRepository.GetAllByBookingIdAsync(request.BookingId); // Cần thêm BookingId vào ValidateCouponDto
+
+			if (existingUsages.Any(u => u.CouponId == coupon.Id))
+			{
+				result.Message = "This coupon has already been applied to this booking.";
+				return result;
+			}
+
 			// Calculate discount
 			var discountAmount = CalculateDiscount(coupon, request.BookingAmount);
 			var finalAmount = request.BookingAmount - discountAmount;
@@ -704,10 +818,12 @@ namespace BookingSystem.Application.Services
 			}
 
 			// Check if booking already has a coupon
-			var existingUsage = await _couponUsageRepository.GetByBookingIdAsync(bookingId);
-			if (existingUsage != null)
+			var existingUsages = await _couponUsageRepository.GetAllByBookingIdAsync(bookingId); // Cần thêm method mới
+			var coupon = await _couponRepository.GetByCodeAsync(couponCode);
+
+			if (existingUsages.Any(u => u.CouponId == coupon.Id))
 			{
-				throw new BadRequestException("This booking already has a coupon applied. Remove it first.");
+				throw new BadRequestException("This coupon has already been applied to this booking.");
 			}
 
 			// Validate coupon
@@ -719,7 +835,8 @@ namespace BookingSystem.Application.Services
 				BookingAmount = booking.BaseAmount,
 				NumberOfNights = numberOfNights,
 				CheckInDate = booking.CheckInDate,
-				CheckOutDate = booking.CheckOutDate
+				CheckOutDate = booking.CheckOutDate,
+				BookingId = booking.Id,
 			};
 
 			var validation = await ValidateCouponAsync(userId, validationRequest);
@@ -732,8 +849,8 @@ namespace BookingSystem.Application.Services
 			{
 				await _unitOfWork.BeginTransactionAsync();
 
-				var coupon = await _couponRepository.GetByCodeAsync(couponCode);
-				if (coupon == null)
+				var coupo = await _couponRepository.GetByCodeAsync(couponCode);
+				if (coupo == null)
 				{
 					throw new NotFoundException($"Coupon '{couponCode}' not found.");
 				}
@@ -782,7 +899,7 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<bool> RemoveCouponFromBookingAsync(int bookingId, int userId)
+		public async Task<bool> RemoveCouponFromBookingAsync(int bookingId, int userId, string couponCode)
 		{
 			_logger.LogInformation("Removing coupon from booking {BookingId}.", bookingId);
 
@@ -804,10 +921,12 @@ namespace BookingSystem.Application.Services
 				throw new BadRequestException("Coupons can only be removed from pending bookings.");
 			}
 
-			var couponUsage = await _couponUsageRepository.GetByBookingIdAsync(bookingId);
+			var existingUsages = await _couponUsageRepository.GetAllByBookingIdAsync(bookingId);
+			var couponUsage = existingUsages.FirstOrDefault(u => u.Coupon.CouponCode == couponCode);
+
 			if (couponUsage == null)
 			{
-				throw new NotFoundException("No coupon applied to this booking.");
+				throw new NotFoundException($"Coupon '{couponCode}' is not applied to this booking.");
 			}
 
 			try
@@ -854,15 +973,10 @@ namespace BookingSystem.Application.Services
 			}
 		}
 
-		public async Task<CouponUsageDto?> GetCouponUsageByBookingAsync(int bookingId)
+		public async Task<IEnumerable<CouponUsageDto>> GetCouponUsagesByBookingAsync(int bookingId)
 		{
-			var couponUsage = await _couponUsageRepository.GetByBookingIdAsync(bookingId);
-			if (couponUsage == null)
-			{
-				return null;
-			}
-
-			return _mapper.Map<CouponUsageDto>(couponUsage);
+			var couponUsages = await _couponUsageRepository.GetAllByBookingIdAsync(bookingId);
+			return _mapper.Map<IEnumerable<CouponUsageDto>>(couponUsages);
 		}
 
 		public async Task<IEnumerable<CouponUsageDto>> GetUserCouponUsageHistoryAsync(int userId)

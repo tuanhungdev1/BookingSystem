@@ -3,6 +3,7 @@ using BookingSystem.Application.DTOs.CouponDTO;
 using BookingSystem.Application.Models.Responses;
 using BookingSystem.Domain.Base;
 using BookingSystem.Domain.Base.Filter;
+using BookingSystem.Domain.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -20,6 +21,119 @@ namespace BookingSystem.Controllers
 		{
 			_couponService = couponService;
 		}
+
+		#region Homestay Applicable Coupons
+
+		/// <summary>
+		/// [Public] Lấy danh sách coupon active áp dụng cho homestay (cho guest xem)
+		/// </summary>
+		[HttpGet("homestay/{homestayId:int}/active")]
+		[AllowAnonymous]
+		public async Task<ActionResult<ApiResponse<IEnumerable<CouponDto>>>> GetActiveApplicableCouponsForHomestay(
+			int homestayId,
+			[FromQuery] decimal? bookingAmount = null,
+			[FromQuery] int? numberOfNights = null)
+		{
+			try
+			{
+				// Lấy userId nếu user đã login
+				int? userId = null;
+				if (User.Identity?.IsAuthenticated == true)
+				{
+					var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+					if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out int parsedUserId))
+					{
+						userId = parsedUserId;
+					}
+				}
+
+				var coupons = await _couponService.GetActiveApplicableCouponsForHomestayAsync(
+					homestayId, userId, bookingAmount, numberOfNights);
+
+				return Ok(new ApiResponse<IEnumerable<CouponDto>>
+				{
+					Success = true,
+					Message = "Coupons retrieved successfully.",
+					Data = coupons
+				});
+			}
+			catch (NotFoundException ex)
+			{
+				return NotFound(new ApiResponse<IEnumerable<CouponDto>>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+			catch (BadRequestException ex)
+			{
+				return BadRequest(new ApiResponse<IEnumerable<CouponDto>>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new ApiResponse<IEnumerable<CouponDto>>
+				{
+					Success = false,
+					Message = "Internal server error."
+				});
+			}
+		}
+
+		/// <summary>
+		/// [Host/Admin] Lấy TẤT CẢ coupon áp dụng cho homestay (bao gồm inactive)
+		/// </summary>
+		[HttpGet("homestay/{homestayId:int}/all")]
+		[Authorize(Roles = "Host,Admin")]
+		public async Task<ActionResult<ApiResponse<IEnumerable<CouponDto>>>> GetApplicableCouponsForHomestay(
+			int homestayId,
+			[FromQuery] bool includeInactive = false)
+		{
+			try
+			{
+				var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+				if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+				{
+					return Unauthorized(new ApiResponse<IEnumerable<CouponDto>>
+					{
+						Success = false,
+						Message = "Invalid user authentication"
+					});
+				}
+
+				var coupons = await _couponService.GetApplicableCouponsForHomestayAsync(
+					homestayId, includeInactive);
+
+				return Ok(new ApiResponse<IEnumerable<CouponDto>>
+				{
+					Success = true,
+					Message = "Coupons retrieved successfully.",
+					Data = coupons
+				});
+			}
+			catch (NotFoundException ex)
+			{
+				return NotFound(new ApiResponse<IEnumerable<CouponDto>>
+				{
+					Success = false,
+					Message = ex.Message
+				});
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new ApiResponse<IEnumerable<CouponDto>>
+				{
+					Success = false,
+					Message = "Internal server error."
+				});
+			}
+		}
+
+		#endregion
+
 
 		#region CRUD Operations
 
@@ -364,8 +478,8 @@ namespace BookingSystem.Controllers
 		/// Remove coupon from booking
 		/// </summary>
 		[HttpDelete("remove")]
-		[Authorize(Roles = "Guest,Admin")]
-		public async Task<ActionResult<ApiResponse<object>>> RemoveCouponFromBooking([FromQuery] int bookingId)
+		//[Authorize(Roles = "Guest,Admin")]
+		public async Task<ActionResult<ApiResponse<object>>> RemoveCouponFromBooking([FromQuery] int bookingId, [FromBody] RemoveCouponDto request)
 		{
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 			if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
@@ -377,7 +491,7 @@ namespace BookingSystem.Controllers
 				});
 			}
 
-			var success = await _couponService.RemoveCouponFromBookingAsync(bookingId, userId);
+			var success = await _couponService.RemoveCouponFromBookingAsync(bookingId, userId, request.CouponCode);
 			if (!success)
 			{
 				return BadRequest(new ApiResponse<object>
@@ -395,26 +509,18 @@ namespace BookingSystem.Controllers
 		}
 
 		/// <summary>
-		/// Get coupon usage by booking ID
+		/// Get all coupon usages by booking ID (hỗ trợ nhiều coupon)
 		/// </summary>
-		[HttpGet("booking/{bookingId:int}/usage")]
-		public async Task<ActionResult<ApiResponse<CouponUsageDto>>> GetCouponUsageByBooking(int bookingId)
+		[HttpGet("booking/{bookingId:int}/usages")]
+		public async Task<ActionResult<ApiResponse<IEnumerable<CouponUsageDto>>>> GetCouponUsagesByBooking(int bookingId)
 		{
-			var usage = await _couponService.GetCouponUsageByBookingAsync(bookingId);
-			if (usage == null)
-			{
-				return NotFound(new ApiResponse<CouponUsageDto>
-				{
-					Success = false,
-					Message = "No coupon usage found for this booking"
-				});
-			}
+			var usages = await _couponService.GetCouponUsagesByBookingAsync(bookingId);
 
-			return Ok(new ApiResponse<CouponUsageDto>
+			return Ok(new ApiResponse<IEnumerable<CouponUsageDto>>
 			{
 				Success = true,
-				Message = "Coupon usage retrieved successfully",
-				Data = usage
+				Message = "Coupon usages retrieved successfully",
+				Data = usages
 			});
 		}
 
@@ -464,6 +570,7 @@ namespace BookingSystem.Controllers
 		#endregion
 
 		#region Status Management
+
 
 		/// <summary>
 		/// Activate coupon (Admin hoặc Host owner)

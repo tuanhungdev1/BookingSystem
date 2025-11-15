@@ -46,8 +46,10 @@ namespace BookingSystem.Application.Mappings
 
 			CreateMap<CouponUsage, CouponUsageDto>()
 				.ForMember(dest => dest.CouponCode, opt => opt.MapFrom(src => src.Coupon.CouponCode))
-				.ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.FullName)) 
-				.ForMember(dest => dest.BookingCode, opt => opt.MapFrom(src => src.Booking.BookingCode));
+				.ForMember(dest => dest.CouponName, opt => opt.MapFrom(src => src.Coupon.CouponName)) // THÊM DÒNG NÀY
+				.ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.FullName))
+				.ForMember(dest => dest.BookingCode, opt => opt.MapFrom(src => src.Booking.BookingCode))
+				.ForMember(dest => dest.Coupon, opt => opt.MapFrom(src => src.Coupon)); // THÊM DÒNG NÀY
 
 
 			CreateMap<Coupon, CouponDto>()
@@ -118,6 +120,10 @@ namespace BookingSystem.Application.Mappings
 				.ForMember(dest => dest.GuestEmail, opt => opt.MapFrom(src => src.Guest.Email))
 				.ForMember(dest => dest.GuestPhone, opt => opt.MapFrom(src => src.Guest.PhoneNumber))
 				.ForMember(dest => dest.GuestAvatar, opt => opt.MapFrom(src => src.Guest.Avatar))
+				.ForMember(dest => dest.PaymentNotes, opt => opt.MapFrom(src => src.PaymentNotes))
+				.ForMember(dest => dest.CouponDiscountAmount, opt => opt.MapFrom(src =>
+					src.CouponUsages.Sum(cu => cu.DiscountAmount)))
+				.ForMember(dest => dest.AppliedCoupons, opt => opt.MapFrom(src => src.CouponUsages))
 				.AfterMap((src, dest) =>
 				{
 					dest.NumberOfNights = (src.CheckOutDate - src.CheckInDate).Days;

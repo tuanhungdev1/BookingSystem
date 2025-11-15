@@ -14,6 +14,42 @@ namespace BookingSystem.Infrastructure.Repositories
 		{
 		}
 
+		public async Task<IEnumerable<Coupon>> GetApplicableCouponsForHomestayAsync(
+	int homestayId,
+	bool includeInactive = false)
+		{
+			var query = _context.Coupons
+				.Include(c => c.CouponHomestays)
+				.Include(c => c.SpecificHomestay)
+				.Include(c => c.CreatedBy)
+				.AsQueryable();
+
+			// Lọc theo trạng thái active
+			if (!includeInactive)
+			{
+				query = query.Where(c => c.IsActive);
+			}
+
+			// Lấy coupon áp dụng cho homestay này
+			var coupons = await query
+				.Where(c =>
+					// Case 1: Scope = AllHomestays
+					c.Scope == CouponScope.AllHomestays ||
+
+					// Case 2: Scope = SpecificHomestay và match homestayId
+					(c.Scope == CouponScope.SpecificHomestay && c.SpecificHomestayId == homestayId) ||
+
+					// Case 3: Scope = MultipleHomestays và homestayId có trong list
+					(c.Scope == CouponScope.MultipleHomestays &&
+					 c.CouponHomestays.Any(ch => ch.HomestayId == homestayId))
+				)
+				.OrderByDescending(c => c.Priority)
+				.ThenBy(c => c.CouponCode)
+				.ToListAsync();
+
+			return coupons;
+		}
+
 		public async Task<List<CouponUsage>> GetAllCouponUsagesByCouponIdsAsync(List<int> couponIds)
 		{
 			return await _context.CouponUsages

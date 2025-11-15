@@ -18,7 +18,6 @@ namespace BookingSystem.Infrastructure.Configurations
 			entity.Property(cu => cu.DiscountAmount)
 				.HasColumnType("decimal(18,2)");
 
-			entity.HasIndex(cu => cu.BookingId).IsUnique();
 			entity.HasIndex(cu => cu.UserId);
 			entity.HasIndex(cu => cu.CouponId);
 			entity.HasIndex(cu => cu.UsedAt);

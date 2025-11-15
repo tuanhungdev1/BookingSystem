@@ -1,4 +1,5 @@
-﻿using BookingSystem.Application.DTOs.PaymentDTO;
+﻿using BookingSystem.Application.DTOs.CouponDTO;
+using BookingSystem.Application.DTOs.PaymentDTO;
 using BookingSystem.Domain.Enums;
 
 namespace BookingSystem.Application.DTOs.BookingDTO
@@ -29,7 +30,9 @@ namespace BookingSystem.Application.DTOs.BookingDTO
 		public string? CancelledBy { get; set; }
 		public DateTime CreatedAt { get; set; }
 		public DateTime UpdatedAt { get; set; }
-
+		public string? PaymentNotes { get; set; }
+		public decimal? CouponDiscountAmount { get; set; }
+		public List<CouponUsageDto> AppliedCoupons { get; set; } = new List<CouponUsageDto>();
 		// Guest Information
 		public int GuestId { get; set; }
 		public string GuestName { get; set; } = string.Empty;

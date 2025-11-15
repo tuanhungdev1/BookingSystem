@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BookingSystem.Application.Attributes;
+using System.ComponentModel.DataAnnotations;
 
 namespace BookingSystem.Application.DTOs.BookingDTO
 {
@@ -26,11 +27,11 @@ namespace BookingSystem.Application.DTOs.BookingDTO
 		[MaxLength(200)]
 		public string? GuestFullName { get; set; }
 
-		[EmailAddress(ErrorMessage = "Invalid email format")]
+		[ConditionalEmail(ErrorMessage = "Invalid actual guest email format")]
 		[MaxLength(200)]
 		public string? GuestEmail { get; set; }
 
-		[Phone(ErrorMessage = "Invalid phone number format")]
+		[ConditionalPhone(ErrorMessage = "Invalid actual guest phone number format")]
 		[MaxLength(20)]
 		public string? GuestPhoneNumber { get; set; }
 

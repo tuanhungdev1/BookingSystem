@@ -22,5 +22,7 @@ namespace BookingSystem.Application.Contracts
 		Task<PaymentDto?> GetByIdAsync(int paymentId);
 		Task<IEnumerable<PaymentDto>> GetByBookingIdAsync(int bookingId);
 		Task<bool> MarkPaymentAsFailedAsync(int paymentId, string failureReason);
+
+		Task<RefundStatusDto> GetRefundStatusAsync(int paymentId);
 	}
 }
