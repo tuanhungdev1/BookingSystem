@@ -1,6 +1,8 @@
 ﻿using BookingSystem.Application.Contracts;
 using BookingSystem.Application.DTOs.DashboardDTO;
 using BookingSystem.Application.Models.Responses;
+using BookingSystem.Application.Services;
+using BookingSystem.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,18 +10,21 @@ namespace BookingSystem.Controllers
 {
 	[ApiController]
 	[Route("api/admin/dashboard")]
-	//[Authorize(Roles = "Admin")]
+	[Authorize(Policy = "Admin")]
 	public class DashboardController : ControllerBase
 	{
 		private readonly IDashboardService _dashboardService;
 		private readonly ILogger<DashboardController> _logger;
+		private readonly IDashboardExportService _dashboardExportService;
 
 		public DashboardController(
 			IDashboardService dashboardService,
+			IDashboardExportService dashboardExportService,
 			ILogger<DashboardController> logger)
 		{
 			_dashboardService = dashboardService;
 			_logger = logger;
+			_dashboardExportService = dashboardExportService;
 		}
 
 		[HttpGet("overview")]
@@ -260,31 +265,122 @@ namespace BookingSystem.Controllers
 			}
 		}
 
+		//[HttpGet("export")]
+		//[ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+		//[ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+		//[ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+		//public async Task<IActionResult> ExportDashboard(
+		//	[FromQuery] string format = "excel",
+		//	[FromQuery] int months = 12)
+		//{
+		//	try
+		//	{
+		//		if (format.ToLower() != "excel" && format.ToLower() != "csv")
+		//		{
+		//			return BadRequest(new ApiResponse
+		//			{
+		//				Success = false,
+		//				Message = "Format must be 'excel' or 'csv'"
+		//			});
+		//		}
+
+		//		// TODO: Implement export logic (EPPlus, CSV, etc.)
+		//		return BadRequest(new ApiResponse
+		//		{
+		//			Success = false,
+		//			Message = "Export functionality not yet implemented"
+		//		});
+		//	}
+		//	catch (Exception ex)
+		//	{
+		//		_logger.LogError(ex, "Error exporting dashboard");
+		//		return StatusCode(500, new ApiResponse
+		//		{
+		//			Success = false,
+		//			Message = "An error occurred while exporting dashboard"
+		//		});
+		//	}
+		//}
+
 		[HttpGet("export")]
 		[ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
 		[ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
-		[ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
 		public async Task<IActionResult> ExportDashboard(
-			[FromQuery] string format = "excel",
-			[FromQuery] int months = 12)
+	[FromQuery] string format = "excel",
+	[FromQuery] int months = 12)
 		{
 			try
 			{
-				if (format.ToLower() != "excel" && format.ToLower() != "csv")
+				if (months < 1 || months > 24)
 				{
 					return BadRequest(new ApiResponse
 					{
 						Success = false,
-						Message = "Format must be 'excel' or 'csv'"
+						Message = "Months must be between 1 and 24"
 					});
 				}
 
-				// TODO: Implement export logic (EPPlus, CSV, etc.)
-				return BadRequest(new ApiResponse
+				if (!format.ToLower().IsValidExportFormat())
 				{
-					Success = false,
-					Message = "Export functionality not yet implemented"
-				});
+					return BadRequest(new ApiResponse
+					{
+						Success = false,
+						Message = "Format must be 'excel', 'pdf', or 'csv'"
+					});
+				}
+
+				// Lấy complete dashboard data
+				var overview = await _dashboardService.GetOverviewAsync(months);
+				var userStats = await _dashboardService.GetUserStatisticsAsync();
+				var bookingStats = await _dashboardService.GetBookingStatisticsAsync(months);
+				var revenueStats = await _dashboardService.GetRevenueStatisticsAsync(months);
+				var reviewStats = await _dashboardService.GetReviewStatisticsAsync(6);
+
+				var completeDashboard = new CompleteDashboardDto
+				{
+					Overview = overview,
+					UserStatistics = userStats,
+					BookingStatistics = bookingStats,
+					RevenueStatistics = revenueStats,
+					ReviewStatistics = reviewStats,
+					GeneratedAt = DateTime.UtcNow
+				};
+
+				// Export theo format
+				byte[] fileBytes;
+				string contentType;
+				string fileName;
+
+				switch (format.ToLower())
+				{
+					case "excel":
+						fileBytes = await _dashboardExportService.ExportAdminDashboardToExcelAsync(completeDashboard, months);
+						contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+						fileName = $"Admin_Dashboard_{DateTime.Now:yyyy-MM-dd}.xlsx";
+						break;
+
+					case "pdf":
+						fileBytes = await _dashboardExportService.ExportAdminDashboardToPdfAsync(completeDashboard, months);
+						contentType = "application/pdf";
+						fileName = $"Admin_Dashboard_{DateTime.Now:yyyy-MM-dd}.pdf";
+						break;
+
+					case "csv":
+						fileBytes = await _dashboardExportService.ExportAdminDashboardToCSVAsync(completeDashboard, months);
+						contentType = "text/csv";
+						fileName = $"Admin_Dashboard_{DateTime.Now:yyyy-MM-dd}.csv";
+						break;
+
+					default:
+						return BadRequest(new ApiResponse
+						{
+							Success = false,
+							Message = "Invalid format"
+						});
+				}
+
+				_logger.LogInformation("Dashboard exported as {Format} by admin", format);
+				return File(fileBytes, contentType, fileName);
 			}
 			catch (Exception ex)
 			{
@@ -299,13 +395,13 @@ namespace BookingSystem.Controllers
 	}
 
 	// DTO for complete dashboard
-	public class CompleteDashboardDto
-	{
-		public DashboardOverviewDto Overview { get; set; } = new();
-		public DashboardUserStatisticsDto UserStatistics { get; set; } = new();
-		public DashboardBookingStatisticsDto BookingStatistics { get; set; } = new();
-		public RevenueStatisticsDto RevenueStatistics { get; set; } = new();
-		public ReviewStatisticsDto ReviewStatistics { get; set; } = new();
-		public DateTime GeneratedAt { get; set; }
-	}
+	//public class CompleteDashboardDto
+	//{
+	//	public DashboardOverviewDto Overview { get; set; } = new();
+	//	public DashboardUserStatisticsDto UserStatistics { get; set; } = new();
+	//	public DashboardBookingStatisticsDto BookingStatistics { get; set; } = new();
+	//	public RevenueStatisticsDto RevenueStatistics { get; set; } = new();
+	//	public ReviewStatisticsDto ReviewStatistics { get; set; } = new();
+	//	public DateTime GeneratedAt { get; set; }
+	//}
 }

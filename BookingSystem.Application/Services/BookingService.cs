@@ -201,6 +201,34 @@ namespace BookingSystem.Application.ServiceUpdate
 				throw new NotFoundException($"Guest with ID {guestId} not found.");
 			}
 
+			var homestay = await _homestayRepository.GetByIdAsync(request.HomestayId);
+			if (homestay == null)
+			{
+				throw new NotFoundException($"Homestay with ID {request.HomestayId} not found.");
+			}
+
+			if (homestay.RoomsAtThisPrice <= 0)
+			{
+				await _unitOfWork.RollbackTransactionAsync();
+				_logger.LogWarning(
+					"Attempt to book homestay {HomestayId} when RoomsAtThisPrice = 0. Booking blocked.",
+					homestay.Id);
+
+				throw new BadRequestException(
+					"Rất tiếc, hiện tại đã hết phòng với mức giá này. Vui lòng chọn ngày khác hoặc liên hệ chủ nhà.");
+			}
+
+			if (homestay.OwnerId == guestId)
+			{
+				throw new BadRequestException("Bạn không thể đặt phòng homestay do chính mình sở hữu.");
+			}
+
+			var guestRoles = await _userManager.GetRolesAsync(guest);
+			if (guestRoles.Contains("Admin"))
+			{
+				throw new BadRequestException("Quản trị viên không được phép đặt phòng trên hệ thống.");
+			}
+
 			// ✅ THÊM: Validate thông tin người ở thực tế nếu đặt cho người khác
 			if (request.IsBookingForSomeoneElse)
 			{
@@ -294,6 +322,8 @@ namespace BookingSystem.Application.ServiceUpdate
 					ActualGuestPhoneNumber = request.ActualGuestPhoneNumber,
 					ActualGuestIdNumber = request.ActualGuestIdNumber,
 					ActualGuestNotes = request.ActualGuestNotes,
+					// THÊM: Đặt thời gian hết hạn thanh toán là 30 phút từ bây giờ
+					PaymentExpiresAt = DateTime.UtcNow.AddMinutes(30),
 
 					CreatedAt = DateTime.UtcNow,
 					UpdatedAt = DateTime.UtcNow
@@ -301,7 +331,16 @@ namespace BookingSystem.Application.ServiceUpdate
 
 				await _bookingRepository.AddAsync(booking);
 				await _bookingRepository.SaveChangesAsync();
-				await BlockDatesForBookingAsync(booking, "Pending Booking");
+				await BlockDatesForBookingAsync(booking, "Ngày này đã được đặt bởi khách hàng");
+
+				homestay.RoomsAtThisPrice -= 1;
+				_homestayRepository.Update(homestay);
+
+				_logger.LogInformation(
+					"RoomsAtThisPrice reduced for homestay {HomestayId}: {Old} → {New}",
+					homestay.Id,
+					homestay.RoomsAtThisPrice + 1,
+					homestay.RoomsAtThisPrice);
 				await _unitOfWork.CommitTransactionAsync();
 
 				_ = _emailService.SendBookingConfirmationAsync(
@@ -912,13 +951,20 @@ namespace BookingSystem.Application.ServiceUpdate
 				booking.CancelledAt = DateTime.UtcNow;
 				booking.CancelledBy = hostId.ToString();
 				booking.UpdatedAt = DateTime.UtcNow;
-
 				_bookingRepository.Update(booking);
 				await _bookingRepository.SaveChangesAsync();
 
 				// TODO: Send rejection email/notification to guest
 				// TODO: Process refund if payment was made
 				await UnblockDatesForBookingAsync(booking);
+
+				var homestayToRestore = await _homestayRepository.GetByIdAsync(booking.HomestayId);
+				if (homestayToRestore != null)
+				{
+					homestayToRestore.RoomsAtThisPrice += 1;
+					_homestayRepository.Update(homestayToRestore);
+					_logger.LogInformation("RoomsAtThisPrice restored for homestay {HomestayId} after cancellation.", booking.HomestayId);
+				}
 				await _unitOfWork.CommitTransactionAsync();
 
 				_ = _emailService.SendBookingRejectedAsync(
@@ -997,6 +1043,14 @@ namespace BookingSystem.Application.ServiceUpdate
 				// TODO: Calculate cancellation fee based on cancellation policy
 				// TODO: Process refund
 				await UnblockDatesForBookingAsync(booking);
+
+				var homestayToRestore = await _homestayRepository.GetByIdAsync(booking.HomestayId);
+				if (homestayToRestore != null)
+				{
+					homestayToRestore.RoomsAtThisPrice += 1;
+					_homestayRepository.Update(homestayToRestore);
+					_logger.LogInformation("RoomsAtThisPrice restored for homestay {HomestayId} after cancellation.", booking.HomestayId);
+				}
 				await _unitOfWork.CommitTransactionAsync();
 				_ = _emailService.SendBookingCancelledAsync(
 					booking.Guest.Email!,
@@ -1362,13 +1416,13 @@ namespace BookingSystem.Application.ServiceUpdate
 
 		public async Task ProcessExpiredPendingBookingsAsync()
 		{
-			_logger.LogInformation("Processing expired pending bookings.");
+			_logger.LogInformation("Processing expired unpaid bookings.");
 
-			var expiredBookings = await _bookingRepository.GetExpiredPendingBookingsAsync(30); // 30 minutes expiration
+			var expiredBookings = await _bookingRepository.GetUnpaidExpiredBookingsAsync();
 
 			if (!expiredBookings.Any())
 			{
-				_logger.LogInformation("No expired pending bookings found.");
+				_logger.LogInformation("No expired unpaid bookings found.");
 				return;
 			}
 
@@ -1379,21 +1433,41 @@ namespace BookingSystem.Application.ServiceUpdate
 				foreach (var booking in expiredBookings)
 				{
 					booking.BookingStatus = BookingStatus.Cancelled;
-					booking.CancellationReason = "Booking expired due to pending payment timeout.";
+					booking.CancellationReason = "Booking automatically cancelled due to payment timeout (30 minutes). No payment received.";
 					booking.CancelledAt = DateTime.UtcNow;
 					booking.CancelledBy = "System";
 					booking.UpdatedAt = DateTime.UtcNow;
+
 					_bookingRepository.Update(booking);
+
+					// Unblock các ngày đã được block
+					await UnblockDatesForBookingAsync(booking);
+					var homestayToRestore = await _homestayRepository.GetByIdAsync(booking.HomestayId);
+					if (homestayToRestore != null)
+					{
+						homestayToRestore.RoomsAtThisPrice += 1;
+						_homestayRepository.Update(homestayToRestore);
+						_logger.LogInformation("RoomsAtThisPrice restored for homestay {HomestayId} after cancellation.", booking.HomestayId);
+					}
+					_logger.LogInformation("Booking {BookingCode} auto-cancelled due to payment timeout.", booking.BookingCode);
+
+					// GỬI EMAIL THÔNG BÁO CHO GUEST
+					_ = _emailService.SendBookingCancelledAsync(
+						booking.Guest.Email!,
+						booking.Guest.FullName,
+						booking.BookingCode,
+						booking.Homestay.HomestayTitle
+					);
 				}
 
 				await _bookingRepository.SaveChangesAsync();
 				await _unitOfWork.CommitTransactionAsync();
 
-				_logger.LogInformation("Successfully processed {Count} expired pending bookings.", expiredBookings.Count());
+				_logger.LogInformation("Successfully processed {Count} expired unpaid bookings.", expiredBookings.Count());
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error occurred while processing expired pending bookings.");
+				_logger.LogError(ex, "Error occurred while processing expired unpaid bookings.");
 				await _unitOfWork.RollbackTransactionAsync();
 				throw;
 			}

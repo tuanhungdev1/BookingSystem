@@ -1,5 +1,6 @@
 ﻿using BookingSystem.Application.Contracts;
 using BookingSystem.Application.DTOs.BookingDTO;
+using BookingSystem.Application.DTOs.ExportDTOs;
 using BookingSystem.Application.Models.Responses;
 using BookingSystem.Domain.Base;
 using BookingSystem.Domain.Base.Filter;
@@ -15,10 +16,209 @@ namespace BookingSystem.Controllers
 	public class BookingController : ControllerBase
 	{
 		private readonly IBookingService _bookingService;
+		private readonly IGenericExportService _exportService;
 
-		public BookingController(IBookingService bookingService)
+		public BookingController(IBookingService bookingService, IGenericExportService exportService)
 		{
 			_bookingService = bookingService;
+			_exportService = exportService;
+		}
+
+		[HttpGet("export/excel")]
+		[Authorize(Roles = "Admin,Host")]
+		public async Task<IActionResult> ExportBookingsToExcel([FromQuery] BookingFilter filter)
+		{
+			try
+			{
+				var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+				if (!int.TryParse(userIdClaim, out int userId))
+					return Unauthorized();
+
+				var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+				var isAdmin = roles.Contains("Admin");
+
+				PagedResult<BookingDto> bookings;
+				if (isAdmin)
+					bookings = await _bookingService.GetAllBookingsAsync(filter);
+				else
+					bookings = await _bookingService.GetHostBookingsAsync(userId, filter);
+
+				var exportData = bookings.Items.Select(b => new BookingExportDto
+				{
+					Id = b.Id,
+					BookingCode = b.BookingCode,
+					GuestId = b.GuestId,
+					GuestFullName = b.GuestFullName,
+					GuestEmail = b.GuestEmail,
+					GuestPhoneNumber = b.GuestPhoneNumber,
+					HomestayId = b.Homestay.Id,
+					HomestayTitle = b.Homestay?.HomestayTitle ?? "",
+					CheckInDate = b.CheckInDate,
+					CheckOutDate = b.CheckOutDate,
+					NumberOfGuests = b.NumberOfGuests,
+					NumberOfAdults = b.NumberOfAdults,
+					NumberOfChildren = b.NumberOfChildren,
+					BaseAmount = b.BaseAmount,
+					CleaningFee = b.CleaningFee,
+					ServiceFee = b.ServiceFee,
+					TaxAmount = b.TaxAmount,
+					DiscountAmount = b.DiscountAmount,
+					TotalAmount = b.TotalAmount,
+					BookingStatus = b.BookingStatus.ToString(),
+					IsBookingForSomeoneElse = b.IsBookingForSomeoneElse,
+					ActualGuestFullName = b.ActualGuestFullName,
+					ActualGuestPhoneNumber = b.ActualGuestPhoneNumber,
+					CreatedAt = b.CreatedAt,
+					CancelledAt = b.CancelledAt
+				});
+
+				var excelData = await _exportService.ExportToExcelAsync(
+					exportData,
+					sheetName: "Bookings",
+					fileName: "bookings.xlsx"
+				);
+
+				return File(excelData, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "bookings.xlsx");
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Failed to export: {ex.Message}"
+				});
+			}
+		}
+
+		[HttpGet("export/pdf")]
+		[Authorize(Roles = "Admin,Host")]
+		public async Task<IActionResult> ExportBookingsToPdf([FromQuery] BookingFilter filter)
+		{
+			try
+			{
+				var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+				if (!int.TryParse(userIdClaim, out int userId))
+					return Unauthorized();
+
+				var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+				var isAdmin = roles.Contains("Admin");
+
+				PagedResult<BookingDto> bookings;
+				if (isAdmin)
+					bookings = await _bookingService.GetAllBookingsAsync(filter);
+				else
+					bookings = await _bookingService.GetHostBookingsAsync(userId, filter);
+
+				var exportData = bookings.Items.Select(b => new BookingExportDto
+				{
+					Id = b.Id,
+					BookingCode = b.BookingCode,
+					GuestId = b.GuestId,
+					GuestFullName = b.GuestFullName,
+					GuestEmail = b.GuestEmail,
+					GuestPhoneNumber = b.GuestPhoneNumber,
+					HomestayId = b.Homestay.Id,
+					HomestayTitle = b.Homestay?.HomestayTitle ?? "",
+					CheckInDate = b.CheckInDate,
+					CheckOutDate = b.CheckOutDate,
+					NumberOfGuests = b.NumberOfGuests,
+					NumberOfAdults = b.NumberOfAdults,
+					NumberOfChildren = b.NumberOfChildren,
+					BaseAmount = b.BaseAmount,
+					CleaningFee = b.CleaningFee,
+					ServiceFee = b.ServiceFee,
+					TaxAmount = b.TaxAmount,
+					DiscountAmount = b.DiscountAmount,
+					TotalAmount = b.TotalAmount,
+					BookingStatus = b.BookingStatus.ToString(),
+					IsBookingForSomeoneElse = b.IsBookingForSomeoneElse,
+					ActualGuestFullName = b.ActualGuestFullName,
+					ActualGuestPhoneNumber = b.ActualGuestPhoneNumber,
+					CreatedAt = b.CreatedAt,
+					CancelledAt = b.CancelledAt
+				});
+
+				var pdfData = await _exportService.ExportToPdfAsync(
+					exportData,
+					title: "BOOKINGS REPORT",
+					fileName: "bookings.pdf"
+				);
+
+				return File(pdfData, "application/pdf", "bookings.pdf");
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Failed to export: {ex.Message}"
+				});
+			}
+		}
+
+		[HttpGet("export/csv")]
+		[Authorize(Roles = "Admin,Host")]
+		public async Task<IActionResult> ExportBookingsToCSV([FromQuery] BookingFilter filter)
+		{
+			try
+			{
+				var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+				if (!int.TryParse(userIdClaim, out int userId))
+					return Unauthorized();
+
+				var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+				var isAdmin = roles.Contains("Admin");
+
+				PagedResult<BookingDto> bookings;
+				if (isAdmin)
+					bookings = await _bookingService.GetAllBookingsAsync(filter);
+				else
+					bookings = await _bookingService.GetHostBookingsAsync(userId, filter);
+
+				var exportData = bookings.Items.Select(b => new BookingExportDto
+				{
+					Id = b.Id,
+					BookingCode = b.BookingCode,
+					GuestId = b.GuestId,
+					GuestFullName = b.GuestFullName,
+					GuestEmail = b.GuestEmail,
+					GuestPhoneNumber = b.GuestPhoneNumber,
+					HomestayId = b.Homestay.Id,
+					HomestayTitle = b.Homestay?.HomestayTitle ?? "",
+					CheckInDate = b.CheckInDate,
+					CheckOutDate = b.CheckOutDate,
+					NumberOfGuests = b.NumberOfGuests,
+					NumberOfAdults = b.NumberOfAdults,
+					NumberOfChildren = b.NumberOfChildren,
+					BaseAmount = b.BaseAmount,
+					CleaningFee = b.CleaningFee,
+					ServiceFee = b.ServiceFee,
+					TaxAmount = b.TaxAmount,
+					DiscountAmount = b.DiscountAmount,
+					TotalAmount = b.TotalAmount,
+					BookingStatus = b.BookingStatus.ToString(),
+					IsBookingForSomeoneElse = b.IsBookingForSomeoneElse,
+					ActualGuestFullName = b.ActualGuestFullName,
+					ActualGuestPhoneNumber = b.ActualGuestPhoneNumber,
+					CreatedAt = b.CreatedAt,
+					CancelledAt = b.CancelledAt
+				});
+
+				var csvData = await _exportService.ExportToCSVAsync(
+					exportData,
+					fileName: "bookings.csv"
+				);
+
+				return File(csvData, "text/csv", "bookings.csv");
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Failed to export: {ex.Message}"
+				});
+			}
 		}
 
 		/// <summary>

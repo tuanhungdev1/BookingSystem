@@ -64,5 +64,7 @@ namespace BookingSystem.Application.DTOs.BookingDTO
 		// Review Information
 		public bool CanReview { get; set; }
 		public bool HasReviewed { get; set; }
+
+		public DateTime? PaymentExpiresAt { get; set; }
 	}
 }

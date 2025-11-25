@@ -21,13 +21,16 @@ namespace BookingSystem.Controllers
 	{
 		private readonly IUserService _userService;
 		private readonly UserManager<User> _userManager;
+		private readonly IGenericExportService _exportService;
 
 		public UserController(
 			IUserService userService,
+			 IGenericExportService exportService,
 			UserManager<User> userManager)
 		{
 			_userService = userService;
 			_userManager = userManager;
+			_exportService = exportService;
 		}
 
 		#region User Retrieval
@@ -613,6 +616,156 @@ namespace BookingSystem.Controllers
 				{
 					Success = false,
 					Message = ex.Message
+				});
+			}
+		}
+
+		// ============================== EXPORT USERS (Admin only) ==============================
+
+		[HttpGet("export/excel")]
+		[Authorize(Roles = "Admin")]
+		public async Task<IActionResult> ExportUsersToExcel([FromQuery] UserFilter filter)
+		{
+			try
+			{
+				var result = await _userService.GetUsersAsync(filter);
+
+				var exportData = result.Items.Select(u => new UserExportDto
+				{
+					Id = u.Id,
+					UserName = u.UserName,
+					Email = u.Email,
+					FirstName = u.FirstName,
+					LastName = u.LastName,
+					FullName = u.FullName,
+					PhoneNumber = u.PhoneNumber ?? "N/A",
+					Gender = u.Gender?.ToString(),
+					DateOfBirth = u.DateOfBirth,
+					Address = u.Address,
+					City = u.City,
+					Country = u.Country,
+					PostalCode = u.PostalCode,
+					Roles = u.Roles != null ? string.Join(", ", u.Roles) : "N/A",
+					IsActive = u.IsActive,
+					IsLocked = u.IsLocked,
+					IsEmailConfirmed = u.IsEmailConfirmed,
+					CreatedAt = u.CreatedAt,
+					LastLoginAt = u.LastLoginAt
+				});
+
+				var fileBytes = await _exportService.ExportToExcelAsync(
+					exportData,
+					sheetName: "Danh sách người dùng",
+					fileName: "users.xlsx"
+				);
+
+				return File(fileBytes,
+					"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+					$"users_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Xuất Excel thất bại: {ex.Message}"
+				});
+			}
+		}
+
+		[HttpGet("export/pdf")]
+		[Authorize(Roles = "Admin")]
+		public async Task<IActionResult> ExportUsersToPdf([FromQuery] UserFilter filter)
+		{
+			try
+			{
+				var result = await _userService.GetUsersAsync(filter);
+
+				var exportData = result.Items.Select(u => new UserExportDto
+				{
+					Id = u.Id,
+					UserName = u.UserName,
+					Email = u.Email,
+					FirstName = u.FirstName,
+					LastName = u.LastName,
+					FullName = u.FullName,
+					PhoneNumber = u.PhoneNumber ?? "N/A",
+					Gender = u.Gender?.ToString(),
+					DateOfBirth = u.DateOfBirth,
+					Address = u.Address,
+					City = u.City,
+					Country = u.Country,
+					PostalCode = u.PostalCode,
+					Roles = u.Roles != null ? string.Join(", ", u.Roles) : "N/A",
+					IsActive = u.IsActive,
+					IsLocked = u.IsLocked,
+					IsEmailConfirmed = u.IsEmailConfirmed,
+					CreatedAt = u.CreatedAt,
+					LastLoginAt = u.LastLoginAt
+				});
+
+				var fileBytes = await _exportService.ExportToPdfAsync(
+					exportData,
+					title: "DANH SÁCH NGƯỜI DÙNG - BOOKING SYSTEM",
+					fileName: "users.pdf"
+				);
+
+				return File(fileBytes, "application/pdf", $"users_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Xuất PDF thất bại: {ex.Message}"
+				});
+			}
+		}
+
+		[HttpGet("export/csv")]
+		[Authorize(Roles = "Admin")]
+		public async Task<IActionResult> ExportUsersToCSV([FromQuery] UserFilter filter)
+		{
+			try
+			{
+				var result = await _userService.GetUsersAsync(filter);
+
+				var exportData = result.Items.Select(u => new UserExportDto
+				{
+					Id = u.Id,
+					UserName = u.UserName,
+					Email = u.Email,
+					FirstName = u.FirstName,
+					LastName = u.LastName,
+					FullName = u.FullName,
+					PhoneNumber = u.PhoneNumber ?? "N/A",
+					Gender = u.Gender?.ToString(),
+					DateOfBirth = u.DateOfBirth,
+					Address = u.Address,
+					City = u.City,
+					Country = u.Country,
+					PostalCode = u.PostalCode,
+					Roles = u.Roles != null ? string.Join(", ", u.Roles) : "N/A",
+					IsActive = u.IsActive,
+					IsLocked = u.IsLocked,
+					IsEmailConfirmed = u.IsEmailConfirmed,
+					CreatedAt = u.CreatedAt,
+					LastLoginAt = u.LastLoginAt
+				});
+
+				var fileBytes = await _exportService.ExportToCSVAsync(
+					exportData,
+					fileName: "users.csv"
+				);
+
+				return File(fileBytes, "text/csv; charset=utf-8", $"users_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Xuất CSV thất bại: {ex.Message}"
 				});
 			}
 		}

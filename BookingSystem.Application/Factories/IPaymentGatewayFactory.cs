@@ -1,4 +1,5 @@
 ﻿using BookingSystem.Application.Contracts;
+using BookingSystem.Application.Services;
 using BookingSystem.Domain.Enums;
 using BookingSystem.Infrastructure.PaymentGateways;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +25,8 @@ namespace BookingSystem.Application.Factories
 			return paymentMethod switch
 			{
 				PaymentMethod.VNPay => _serviceProvider.GetRequiredService<VNPayService>(),
+				PaymentMethod.Momo => _serviceProvider.GetRequiredService<MomoService>(),
+				PaymentMethod.Cash => _serviceProvider.GetRequiredService<CashPaymentService>(),
 				// Future expansion:
 				// PaymentMethod.ZaloPay => _serviceProvider.GetRequiredService<ZaloPayService>(),
 				// PaymentMethod.Momo => _serviceProvider.GetRequiredService<MomoService>(),

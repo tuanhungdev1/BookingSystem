@@ -16,10 +16,11 @@ namespace BookingSystem.Controllers
 	public class ReviewController : ControllerBase
 	{
 		private readonly IReviewService _reviewService;
-
-		public ReviewController(IReviewService reviewService)
+		private readonly IGenericExportService _exportService;
+		public ReviewController(IReviewService reviewService, IGenericExportService exportService)
 		{
 			_reviewService = reviewService;
+			_exportService = exportService;
 		}
 
 		private int GetCurrentUserId()
@@ -29,6 +30,165 @@ namespace BookingSystem.Controllers
 				throw new UnauthorizedAccessException("User ID not found in token.");
 
 			return int.Parse(userIdClaim);
+		}
+
+		// ============================== EXPORT REVIEWS (Admin only) ==============================
+
+		[HttpGet("export/excel")]
+		[Authorize(Roles = "Admin")]
+		public async Task<IActionResult> ExportReviewsToExcel([FromQuery] ReviewFilter filter)
+		{
+			try
+			{
+				var result = await _reviewService.GetAllReviewsAsync(filter);
+
+				var exportData = result.Items.Select(r => new ReviewExportDto
+				{
+					Id = r.Id,
+					BookingId = r.BookingId,
+					HomestayId = r.HomestayId,
+					HomestayTitle = r.HomestayTitle,
+					ReviewerId = r.ReviewerId,
+					ReviewerName = r.ReviewerName,
+					RevieweeId = r.RevieweeId,
+					RevieweeName = r.RevieweeName,
+					OverallRating = r.OverallRating,
+					CleanlinessRating = r.CleanlinessRating,
+					LocationRating = r.LocationRating,
+					ValueForMoneyRating = r.ValueForMoneyRating,
+					CommunicationRating = r.CommunicationRating,
+					CheckInRating = r.CheckInRating,
+					ReviewComment = r.ReviewComment ?? "N/A",
+					HostResponse = r.HostResponse ?? "N/A",
+					HostRespondedAt = r.HostRespondedAt,
+					HelpfulCount = r.HelpfulCount,
+					IsRecommended = r.IsRecommended,
+					IsVisible = r.IsVisible,
+					CreatedAt = r.CreatedAt,
+					UpdatedAt = r.UpdatedAt
+				});
+
+				var fileBytes = await _exportService.ExportToExcelAsync(
+					exportData,
+					sheetName: "Danh sách đánh giá",
+					fileName: "reviews.xlsx"
+				);
+
+				return File(fileBytes,
+					"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+					$"reviews_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Export Excel thất bại: {ex.Message}"
+				});
+			}
+		}
+
+		[HttpGet("export/pdf")]
+		[Authorize(Roles = "Admin")]
+		public async Task<IActionResult> ExportReviewsToPdf([FromQuery] ReviewFilter filter)
+		{
+			try
+			{
+				var result = await _reviewService.GetAllReviewsAsync(filter);
+
+				var exportData = result.Items.Select(r => new ReviewExportDto
+				{
+					Id = r.Id,
+					BookingId = r.BookingId,
+					HomestayId = r.HomestayId,
+					HomestayTitle = r.HomestayTitle,
+					ReviewerId = r.ReviewerId,
+					ReviewerName = r.ReviewerName,
+					RevieweeId = r.RevieweeId,
+					RevieweeName = r.RevieweeName,
+					OverallRating = r.OverallRating,
+					CleanlinessRating = r.CleanlinessRating,
+					LocationRating = r.LocationRating,
+					ValueForMoneyRating = r.ValueForMoneyRating,
+					CommunicationRating = r.CommunicationRating,
+					CheckInRating = r.CheckInRating,
+					ReviewComment = r.ReviewComment ?? "N/A",
+					HostResponse = r.HostResponse ?? "N/A",
+					HostRespondedAt = r.HostRespondedAt,
+					HelpfulCount = r.HelpfulCount,
+					IsRecommended = r.IsRecommended,
+					IsVisible = r.IsVisible,
+					CreatedAt = r.CreatedAt,
+					UpdatedAt = r.UpdatedAt
+				});
+
+				var fileBytes = await _exportService.ExportToPdfAsync(
+					exportData,
+					title: "BÁO CÁO ĐÁNH GIÁ - BOOKING SYSTEM",
+					fileName: "reviews.pdf"
+				);
+
+				return File(fileBytes, "application/pdf", $"reviews_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Export PDF thất bại: {ex.Message}"
+				});
+			}
+		}
+
+		[HttpGet("export/csv")]
+		[Authorize(Roles = "Admin")]
+		public async Task<IActionResult> ExportReviewsToCSV([FromQuery] ReviewFilter filter)
+		{
+			try
+			{
+				var result = await _reviewService.GetAllReviewsAsync(filter);
+
+				var exportData = result.Items.Select(r => new ReviewExportDto
+				{
+					Id = r.Id,
+					BookingId = r.BookingId,
+					HomestayId = r.HomestayId,
+					HomestayTitle = r.HomestayTitle,
+					ReviewerId = r.ReviewerId,
+					ReviewerName = r.ReviewerName,
+					RevieweeId = r.RevieweeId,
+					RevieweeName = r.RevieweeName,
+					OverallRating = r.OverallRating,
+					CleanlinessRating = r.CleanlinessRating,
+					LocationRating = r.LocationRating,
+					ValueForMoneyRating = r.ValueForMoneyRating,
+					CommunicationRating = r.CommunicationRating,
+					CheckInRating = r.CheckInRating,
+					ReviewComment = r.ReviewComment ?? "N/A",
+					HostResponse = r.HostResponse ?? "N/A",
+					HostRespondedAt = r.HostRespondedAt,
+					HelpfulCount = r.HelpfulCount,
+					IsRecommended = r.IsRecommended,
+					IsVisible = r.IsVisible,
+					CreatedAt = r.CreatedAt,
+					UpdatedAt = r.UpdatedAt
+				});
+
+				var fileBytes = await _exportService.ExportToCSVAsync(
+					exportData,
+					fileName: "reviews.csv"
+				);
+
+				return File(fileBytes, "text/csv", $"reviews_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Export CSV thất bại: {ex.Message}"
+				});
+			}
 		}
 
 		[HttpPost("{reviewId:int}/helpful")]

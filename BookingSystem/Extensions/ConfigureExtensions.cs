@@ -13,6 +13,7 @@ namespace BookingSystem.Extensions
 			services.Configure<PaymentGatewaySettings>(configuration.GetSection("PaymentGateway"));
 			services.Configure<GoogleAuthSettings>(configuration.GetSection("Authentication:Google"));
 			services.Configure<FacebookAuthSettings>(configuration.GetSection("Authentication:Facebook"));
+			services.Configure<MomoSettings>(configuration.GetSection("PaymentGateway:Momo"));
 			return services;
 		}
 	}

@@ -32,6 +32,11 @@ namespace BookingSystem.Application.DI
 			services.AddScoped<IPaymentGatewayFactory, PaymentGatewayFactory>();
 			services.AddScoped<IPaymentService, PaymentService>();
 			services.AddScoped<IDashboardService, DashboardService>();
+			services.AddScoped<IGenericExportService, GenericExportService>();
+			services.AddScoped<IDashboardExportService, DashboardExportService>();
+			services.AddScoped<MomoService>();
+			services.AddHttpClient<MomoService>();
+			services.AddScoped<CashPaymentService>();
 			services.AddHttpContextAccessor();
 
 			return services;

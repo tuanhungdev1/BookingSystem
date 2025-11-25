@@ -352,6 +352,19 @@ namespace BookingSystem.Infrastructure.Repositories
 			return query;
 		}
 
+		public async Task<IEnumerable<Booking>> GetUnpaidExpiredBookingsAsync()
+		{
+			var now = DateTime.UtcNow;
+			return await _dbSet
+				.Include(b => b.Payments)
+				.Include(b => b.Guest)
+				.Include(b => b.Homestay)
+				.Where(b => b.BookingStatus == BookingStatus.Pending
+					&& b.PaymentExpiresAt <= now
+					&& !b.Payments.Any(p => p.PaymentStatus == PaymentStatus.Completed))
+				.ToListAsync();
+		}
+
 		private IQueryable<Booking> ApplySorting(IQueryable<Booking> query, BookingFilter filter)
 		{
 			return filter.SortBy?.ToLower() switch

@@ -18,6 +18,8 @@ namespace BookingSystem.Infrastructure.DI
 					//b.EnableRetryOnFailure();
 				}));
 
+
+
 			return services;
 		}
 	}

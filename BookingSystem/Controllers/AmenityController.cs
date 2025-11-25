@@ -14,11 +14,14 @@ namespace BookingSystem.Controllers
 	public class AmenityController : ControllerBase
 	{
 		private readonly IAmenityService _amenityService;
+		private readonly IGenericExportService _exportService;
 
-		public AmenityController(IAmenityService amenityService)
+		public AmenityController(IAmenityService amenityService, IGenericExportService exportService)
 		{
 			_amenityService = amenityService;
+			_exportService = exportService;
 		}
+
 
 		
 		[HttpGet("{id:int}")]

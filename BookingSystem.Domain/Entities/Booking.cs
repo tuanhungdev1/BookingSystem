@@ -62,6 +62,8 @@ namespace BookingSystem.Domain.Entities
 		public string? ActualGuestPhoneNumber { get; set; }
 		public string? ActualGuestIdNumber { get; set; } // CMND/CCCD
 		public string? ActualGuestNotes { get; set; } // Ghi chú về người ở thực tế
+
+		public DateTime? PaymentExpiresAt { get; set; }
 		// Navigation Properties
 		public virtual User Guest { get; set; } = null!;
 		public virtual Homestay Homestay { get; set; } = null!;

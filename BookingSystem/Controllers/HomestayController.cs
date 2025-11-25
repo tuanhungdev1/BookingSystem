@@ -60,12 +60,18 @@ namespace BookingSystem.Controllers
 		/// </summary>
 		[HttpGet]
 		[AllowAnonymous]
-		public async Task<ActionResult<ApiResponse<PagedResult<HomestayDto>>>> GetAll([FromQuery] HomestayFilter filter, [FromQuery] int[] propertyTypeIds)
+		public async Task<ActionResult<ApiResponse<PagedResult<HomestayDto>>>> GetAll([FromQuery] HomestayFilter filter, [FromQuery] int[] propertyTypeIds, [FromQuery] int[] amenityIds)
 		{
 			if (propertyTypeIds != null && propertyTypeIds.Length > 0)
 			{
 				filter.PropertyTypeIds = string.Join(",", propertyTypeIds);
 			}
+
+			if (amenityIds != null && amenityIds.Length > 0)
+			{
+				filter.AmenityIds = string.Join(",", amenityIds);
+			}
+
 			var homestays = await _homestayService.GetAllHomestayAsync(filter);
 			return Ok(new ApiResponse<PagedResult<HomestayDto>>
 			{
@@ -83,7 +89,7 @@ namespace BookingSystem.Controllers
 		/// Tạo mới homestay (Host và Admin)
 		/// </summary>
 		[HttpPost]
-		[Authorize(Roles = "Host,Admin")]
+		[Authorize(Policy = "AdminOrHost")]
 		public async Task<ActionResult<ApiResponse<HomestayDto>>> Create([FromForm] CreateHomestayDto request)
 		{
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -114,7 +120,7 @@ namespace BookingSystem.Controllers
 		/// Cập nhật thông tin homestay (Owner hoặc Admin)
 		/// </summary>
 		[HttpPut("{id:int}")]
-		[Authorize(Roles = "Host,Admin")]
+		[Authorize(Policy = "AdminOrHost")]
 		public async Task<ActionResult<ApiResponse<HomestayDto>>> Update(int id, [FromForm] UpdateHomestayDto request)
 		{
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -177,7 +183,7 @@ namespace BookingSystem.Controllers
 		/// Kích hoạt homestay (Owner hoặc Admin)
 		/// </summary>
 		[HttpPut("{id:int}/activate")]
-		[Authorize(Roles = "Host,Admin")]
+		[Authorize(Policy = "AdminOrHost")]
 		public async Task<ActionResult<ApiResponse<object>>> Activate(int id)
 		{
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -211,7 +217,7 @@ namespace BookingSystem.Controllers
 		/// Vô hiệu hóa homestay (Owner hoặc Admin)
 		/// </summary>
 		[HttpPut("{id:int}/deactivate")]
-		[Authorize(Roles = "Host,Admin")]
+		[Authorize(Roles = "AdminOrHost")]
 		public async Task<ActionResult<ApiResponse<object>>> Deactivate(int id)
 		{
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -245,7 +251,7 @@ namespace BookingSystem.Controllers
 		/// Thay đổi trạng thái active của homestay (Owner hoặc Admin)
 		/// </summary>
 		[HttpPut("{id:int}/status")]
-		[Authorize(Roles = "Host,Admin")]
+		[Authorize(Roles = "AdminOrHost")]
 		public async Task<ActionResult<ApiResponse<object>>> SetActiveStatus(int id, [FromBody] bool isActive)
 		{
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -286,7 +292,7 @@ namespace BookingSystem.Controllers
 		/// Cập nhật hình ảnh homestay (Owner hoặc Admin)
 		/// </summary>
 		[HttpPut("{id:int}/images")]
-		[Authorize(Roles = "Host,Admin")]
+		[Authorize(Roles = "AdminOrHost")]
 		public async Task<ActionResult<ApiResponse<object>>> UpdateImages(int id, [FromForm] UpdateHomestayImagesDto request)
 		{
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -324,7 +330,7 @@ namespace BookingSystem.Controllers
 		/// Cập nhật danh sách Amenities cho homestay (Owner hoặc Admin)
 		/// </summary>
 		[HttpPut("{id:int}/amenities")]
-		[Authorize(Roles = "Host,Admin")]
+		[Authorize(Roles = "AdminOrHost")]
 		public async Task<ActionResult<ApiResponse<object>>> UpdateAmenities(
 			int id,
 			[FromForm] UpdateHomestayAmenitiesDto amenitieDto)
@@ -364,7 +370,7 @@ namespace BookingSystem.Controllers
 		/// Cập nhật danh sách Rules cho homestay (Owner hoặc Admin)
 		/// </summary>
 		[HttpPut("{id:int}/rules")]
-		[Authorize(Roles = "Host,Admin")]
+		[Authorize(Roles = "AdminOrHost")]
 		public async Task<ActionResult<ApiResponse<object>>> UpdateRules(
 			int id,
 			[FromForm] UpdateHomestayRulesDto updateDto)
@@ -408,7 +414,7 @@ namespace BookingSystem.Controllers
 		/// - DeleteCalendarIds: Xóa các ngày theo ID
 		/// </remarks>
 		[HttpPut("{id:int}/availability-calendars")]
-		[Authorize(Roles = "Host,Admin")]
+		[Authorize(Roles = "AdminOrHost")]
 		public async Task<ActionResult<ApiResponse<object>>> UpdateAvailabilityCalendars(
 			int id,
 			[FromBody] UpdateHomestayAvailabilityCalendarsDto request)
@@ -446,7 +452,7 @@ namespace BookingSystem.Controllers
 		/// Phê duyệt homestay (Admin only)
 		/// </summary>
 		[HttpPut("{id:int}/approve")]
-		[Authorize(Roles = "Admin")]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<HomestayDto>>> ApproveHomestay(
 			int id,
 			[FromBody] ApproveHomestayDto request)
@@ -485,7 +491,7 @@ namespace BookingSystem.Controllers
 		/// Từ chối homestay (Admin only)
 		/// </summary>
 		[HttpPut("{id:int}/reject")]
-		[Authorize(Roles = "Admin")]
+		[Authorize(Policy = "Admin")]
 		public async Task<ActionResult<ApiResponse<HomestayDto>>> RejectHomestay(
 			int id,
 			[FromBody] string rejectionReason)

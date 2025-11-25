@@ -15,10 +15,12 @@ namespace BookingSystem.Controllers
 	public class HostProfileController : ControllerBase
 	{
 		private readonly IHostProfileService _hostProfileService;
+		private readonly IGenericExportService _exportService;
 
-		public HostProfileController(IHostProfileService hostProfileService)
+		public HostProfileController(IHostProfileService hostProfileService, IGenericExportService exportService)
 		{
 			_hostProfileService = hostProfileService;
+			_exportService = exportService;
 		}
 
 		/// <summary>
@@ -327,6 +329,165 @@ namespace BookingSystem.Controllers
 				Success = true,
 				Message = "Host profile removed successfully"
 			});
+		}
+
+		// ============================== EXPORT HOST PROFILES (Admin only) ==============================
+
+		[HttpGet("export/excel")]
+		[Authorize(Roles = "Admin")]
+		public async Task<IActionResult> ExportHostProfilesToExcel([FromQuery] HostProfileFilter filter)
+		{
+			try
+			{
+				var result = await _hostProfileService.GetAllHostProfileAsync(filter);
+
+				var exportData = result.Items.Select(h => new HostProfileExportDto
+				{
+					Id = h.Id,
+					UserId = h.UserId,
+					BusinessName = h.BusinessName ?? "N/A",
+					AboutMe = h.AboutMe ?? "N/A",
+					Languages = h.Languages ?? "N/A",
+					BankName = h.BankName,
+					BankAccountNumber = h.BankAccountNumber,
+					BankAccountName = h.BankAccountName,
+					TaxCode = h.TaxCode ?? "N/A",
+					TotalHomestays = h.TotalHomestays,
+					TotalBookings = h.TotalBookings,
+					AverageRating = h.AverageRating,
+					ResponseRate = h.ResponseRate,
+					AverageResponseTime = h.AverageResponseTime?.ToString() ?? "N/A",
+					IsActive = h.IsActive,
+					IsSuperhost = h.IsSuperhost,
+					RegisteredAsHostAt = h.RegisteredAsHostAt,
+					Status = h.Status.ToString(),
+					CreatedAt = h.CreatedAt,
+					UpdatedAt = h.UpdatedAt,
+					ApplicantNote = h.ApplicantNote ?? "N/A",
+					ReviewNote = h.ReviewNote ?? "N/A"
+				});
+
+				var fileBytes = await _exportService.ExportToExcelAsync(
+					exportData,
+					sheetName: "Danh sách Host",
+					fileName: "host_profiles.xlsx"
+				);
+
+				return File(fileBytes,
+					"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+					$"host_profiles_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Export Excel thất bại: {ex.Message}"
+				});
+			}
+		}
+
+		[HttpGet("export/pdf")]
+		[Authorize(Roles = "Admin")]
+		public async Task<IActionResult> ExportHostProfilesToPdf([FromQuery] HostProfileFilter filter)
+		{
+			try
+			{
+				var result = await _hostProfileService.GetAllHostProfileAsync(filter);
+
+				var exportData = result.Items.Select(h => new HostProfileExportDto
+				{
+					Id = h.Id,
+					UserId = h.UserId,
+					BusinessName = h.BusinessName ?? "N/A",
+					AboutMe = h.AboutMe ?? "N/A",
+					Languages = h.Languages ?? "N/A",
+					BankName = h.BankName,
+					BankAccountNumber = h.BankAccountNumber,
+					BankAccountName = h.BankAccountName,
+					TaxCode = h.TaxCode ?? "N/A",
+					TotalHomestays = h.TotalHomestays,
+					TotalBookings = h.TotalBookings,
+					AverageRating = h.AverageRating,
+					ResponseRate = h.ResponseRate,
+					AverageResponseTime = h.AverageResponseTime?.ToString() ?? "N/A",
+					IsActive = h.IsActive,
+					IsSuperhost = h.IsSuperhost,
+					RegisteredAsHostAt = h.RegisteredAsHostAt,
+					Status = h.Status.ToString(),
+					CreatedAt = h.CreatedAt,
+					UpdatedAt = h.UpdatedAt,
+					ApplicantNote = h.ApplicantNote ?? "N/A",
+					ReviewNote = h.ReviewNote ?? "N/A"
+				});
+
+				var fileBytes = await _exportService.ExportToPdfAsync(
+					exportData,
+					title: "BÁO CÁO HỒ SƠ HOST - BOOKING SYSTEM",
+					fileName: "host_profiles.pdf"
+				);
+
+				return File(fileBytes, "application/pdf", $"host_profiles_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Export PDF thất bại: {ex.Message}"
+				});
+			}
+		}
+
+		[HttpGet("export/csv")]
+		[Authorize(Roles = "Admin")]
+		public async Task<IActionResult> ExportHostProfilesToCSV([FromQuery] HostProfileFilter filter)
+		{
+			try
+			{
+				var result = await _hostProfileService.GetAllHostProfileAsync(filter);
+
+				var exportData = result.Items.Select(h => new HostProfileExportDto
+				{
+					Id = h.Id,
+					UserId = h.UserId,
+					BusinessName = h.BusinessName ?? "N/A",
+					AboutMe = h.AboutMe ?? "N/A",
+					Languages = h.Languages ?? "N/A",
+					BankName = h.BankName,
+					BankAccountNumber = h.BankAccountNumber,
+					BankAccountName = h.BankAccountName,
+					TaxCode = h.TaxCode ?? "N/A",
+					TotalHomestays = h.TotalHomestays,
+					TotalBookings = h.TotalBookings,
+					AverageRating = h.AverageRating,
+					ResponseRate = h.ResponseRate,
+					AverageResponseTime = h.AverageResponseTime?.ToString() ?? "N/A",
+					IsActive = h.IsActive,
+					IsSuperhost = h.IsSuperhost,
+					RegisteredAsHostAt = h.RegisteredAsHostAt,
+					Status = h.Status.ToString(),
+					CreatedAt = h.CreatedAt,
+					UpdatedAt = h.UpdatedAt,
+					ApplicantNote = h.ApplicantNote ?? "N/A",
+					ReviewNote = h.ReviewNote ?? "N/A"
+				});
+
+				var fileBytes = await _exportService.ExportToCSVAsync(
+					exportData,
+					fileName: "host_profiles.csv"
+				);
+
+				return File(fileBytes, "text/csv", $"host_profiles_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new ApiResponse<object>
+				{
+					Success = false,
+					Message = $"Export CSV thất bại: {ex.Message}"
+				});
+			}
 		}
 
 		/// <summary>
